@@ -59,6 +59,7 @@ int main(int arg,char **argv){
     const double zs = 2;
     const int Npix =  2049;
     const int Nsmooth = 60;
+    const bool los = true;
     
     DLSDS func(cosmo,zs);
     double zl = Utilities::bisection_search<DLSDS,double>(func
@@ -108,6 +109,11 @@ int main(int arg,char **argv){
     
     filename = filename + ".cy" + to_string(Npix) + "x" + to_string(Npix) +
     "S" + to_string(Nsmooth);
+    
+    if(los){
+      lens.GenerateFieldHalos(1.0e11, ShethTormen, lens.getfov(),20);
+      filename = filename + "LOS";
+    }
     
     Grid grid(&lens,Npix,center.x,range);
     std::vector<ImageFinding::CriticalCurve> critcurves;
