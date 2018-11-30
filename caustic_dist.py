@@ -38,7 +38,9 @@ def cum_dist(x,y = -1,inverse_order = False):
     
     return x2[:-1],y2[:-1]
     
-df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049.csv")
+#df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049.csv")
+
+df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049S60.csv")
 
 df = df[ df['caustic_area'] > 0]
 df = df[ df['critical_area'] > 0]
@@ -66,7 +68,7 @@ plt.xlabel(r'area of caustic (arcsec$^2$)')
 plt.ylabel(r'number of critical curves')
 plt.legend()
 
-plt.savefig('caustic_area_distribution.png')
+#plt.savefig('caustic_area_distribution.png')
 plt.show()
 
 x1 = fact * np.array( df1['critical_area'] )
@@ -86,7 +88,7 @@ plt.xlabel(r'area of critical (arcsec$^2$)')
 plt.ylabel(r'number of critical curves')
 plt.legend()
 
-plt.savefig('critical_area_distribution.png')
+#plt.savefig('critical_area_distribution.png')
 plt.show()
 
 #df1 = df1.sort_values(['critical_area'],ascending=0)
@@ -115,7 +117,7 @@ plt.ylabel(r'cumulative area within caustics (arcsec$^2$)')
 plt.xlabel(r'area of critical (arcsec$^2$)')
 plt.legend()
 
-plt.savefig('caust_area_tangential.png')
+#plt.savefig('caust_area_tangential.png')
 plt.show()
 
 plt.fill_between(xx,yy,label="radial")
@@ -128,6 +130,6 @@ plt.ylabel(r'cumulative area within caustics (arcsec$^2$)')
 plt.xlabel(r'area of critical (arcsec$^2$)')
 plt.legend()
 
-plt.savefig('caust_area_radial.png')
+#plt.savefig('caust_area_radial.png')
 plt.show()
 
