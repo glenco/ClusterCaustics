@@ -24,15 +24,15 @@ inline bool exists (const std::string& name) {
 }
 
 struct DLSDS{
-  DLSDS(COSMOLOGY &c,double zs):zs(zs),cosmo(c){
+  DLSDS(COSMOLOGY &c,double zl):zl(zl),cosmo(c){
 
-    Ds = cosmo.angDist(zs);
+   // Dl = cosmo.angDist(zl);
   };
   
-  double zs,Ds;
+  double zl;
   COSMOLOGY &cosmo;
   
-  double operator()(double zl){return cosmo.angDist(zl,zs)/Ds;}
+  double operator()(double zs){return cosmo.angDist(zl,zs)/cosmo.angDist(zs);}
 };
 
 int main(int arg,char **argv){
@@ -56,17 +56,18 @@ int main(int arg,char **argv){
     
     COSMOLOGY cosmo(Planck);
     
-    const double zs = 2;
+    const double zl = 0.506;
     const int Npix =  2049;
     const int Nsmooth = 60;
     const bool los = true;
     
-    DLSDS func(cosmo,zs);
-    double zl = Utilities::bisection_search<DLSDS,double>(func
-                                ,0.5,0,zs,0.001);
+    DLSDS func(cosmo,zl);
+    double zs = Utilities::bisection_search<DLSDS,double>(func
+                                ,0.5,0,5,0.001);
 
     double Dl = cosmo.coorDist(zl);
 
+    std::cout << "zs = " << zs << std::endl;
     
     std::string filename = "DataFiles/snap_058_centered.txt";
     //std::string filename = "DataFiles/snap_058_short.txt";
@@ -108,11 +109,12 @@ int main(int arg,char **argv){
     }
     
     filename = filename + ".cy" + to_string(Npix) + "x" + to_string(Npix) +
-    "S" + to_string(Nsmooth);
+    "S" + to_string(Nsmooth) + "Zl"  + to_string(zl);
     
     if(los){
-      lens.GenerateFieldHalos(1.0e11, ShethTormen, lens.getfov(),20);
-      filename = filename + "LOS";
+      lens.GenerateFieldHalos(1.0e11, ShethTormen,PI*range*range/4/degreesTOradians/degreesTOradians
+                              ,20,nfw_lens,nsie_gal);
+      filename = filename + "LOSg";
     }
     
     Grid grid(&lens,Npix,center.x,range);
