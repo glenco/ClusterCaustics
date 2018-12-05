@@ -94,7 +94,8 @@ int main(int arg,char **argv){
     // cut out a cylinder, could also do a ball
     halomaker.cylindricalCut(center,(Xmax[0]-Xmin[0])/2);
     
-    long seed = 88277394;
+    //long seed = 88277394;
+    long seed = -11920;
     Lens lens(&seed,zs);
     
     double range = (Xmax[0]-Xmin[0])*1.05*cosmo.gethubble()/Dl; // angular range of simulation
@@ -112,7 +113,7 @@ int main(int arg,char **argv){
     "S" + to_string(Nsmooth) + "Zl"  + to_string(zl);
     
     if(los){
-      lens.GenerateFieldHalos(1.0e11, ShethTormen,PI*range*range/4/degreesTOradians/degreesTOradians
+      lens.GenerateFieldHalos(1.0e11, ShethTormen,2*PI*range*range/4/degreesTOradians/degreesTOradians
                               ,20,nfw_lens,nsie_gal);
       filename = filename + "LOSg";
     }
@@ -126,10 +127,10 @@ int main(int arg,char **argv){
     std::cout << "found " << Ncrits << " critical curves" << std::endl;
     ImageFinding::printCriticalCurves(filename,critcurves);
     
-    grid.writeFits(1,KAPPA,filename);
-    grid.writeFits(1,ALPHA1,filename);
-    grid.writeFits(1,ALPHA2,filename);
-    grid.writeFits(1,INVMAG,filename);
+    grid.writeFits(1,KAPPA,"!" + filename);
+    grid.writeFits(1,ALPHA1,"!" + filename);
+    grid.writeFits(1,ALPHA2,"!" + filename);
+    grid.writeFits(1,INVMAG,"!" + filename);
     
     /*
     GridMap gridmap(&lens,Npix,center.x,range);
