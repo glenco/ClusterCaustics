@@ -132,9 +132,26 @@ int main(int arg,char **argv){
     grid.writeFits(1,ALPHA2,filename);
     grid.writeFits(1,INVMAG,filename);
     
-    PixelMap map = ImageFinding::mapCriticalCurves(critcurves,512*2);
+    PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2);
     map.printFITS(filename + "caust.fits");
+
+    map = ImageFinding::mapCriticalCurves(critcurves,512*2);
+    map.printFITS(filename + "crit.fits");
+
+    double area = 0;
+    int j=0;
+    for(int i = 0 ; i < critcurves.size() ; ++i){
+      if(critcurves[i].critical_area > area){
+        area = critcurves[i].critical_area;
+        j = i;
+      }
+    }
     
+    std::ofstream file(filename + "caustic.csv");
+    for(Point_2d p : critcurves[j].critical_curve){
+      file << p << std::endl;
+    }
+    file.close();
     /*
     GridMap gridmap(&lens,Npix,center.x,range);
     
