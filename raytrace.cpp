@@ -96,11 +96,12 @@ int main(int arg,char **argv){
     
     DLSDS func(cosmo,zl);
     double zs = Utilities::bisection_search<DLSDS,double>(func
-                                ,0.5,0,5,0.001);
+                                ,0.5,zl,10,0.001);
 
     double Dl = cosmo.coorDist(zl);
 
     std::cout << "zs = " << zs << std::endl;
+    std::cout << "Dls/Ds = " << cosmo.angDist(zl, zs)/cosmo.angDist(zs) << std::endl;
     
     std::string filename = "DataFiles/snap_058_centered.txt";
     //std::string filename = "DataFiles/snap_058_short.txt";
