@@ -12,6 +12,7 @@
 #include <math.h>
 #include "particle_halo.h"
 #include "utilities.h"
+#include "concave_hull.h"
 //#include "gadget.hh"
 
 using namespace std;
@@ -36,6 +37,37 @@ struct DLSDS{
 };
 
 int main(int arg,char **argv){
+  
+  /*{  // Test of critical curve ordering
+    std::vector<double> data;
+    int ncol,nrows;
+    std::string filename = "DataFiles/snap_058_centered.txt.cy2049x2049S60Zl0.506000caustic.csv";
+  
+    Utilities::IO::ReadASCII(data, filename, ncol, nrows);
+  
+    std::cout << ncol << " " << nrows << std::endl;
+    
+    std::vector<Point_2d> points(nrows);
+    for(int i = 0 ; i < nrows ; ++i){
+      points[i][0] = data[ ncol*i];
+      points[i][1] = data[ ncol*i + 1];
+    }
+    
+    double scale = 10*sqrt( pow(points[0][0] - points[1][0],2) + pow(points[0][1] - points[1][1],2) );
+    std::vector<Point_2d> hull;
+    Utilities::concave(points,hull,scale);
+    //Utilities::convex_hull(points,hull);
+    //std::vector<Point_2d> hull = Utilities::concave2(points, scale);
+    
+    std::ofstream file("caustic_test.csv");
+    file << "x,y" << std::endl;
+    for(auto p : hull){
+      file << p[0] << "," << p[1] << std::endl;
+    }
+    file.close();
+    
+  }*/
+  
   /*{
     std::vector<ParticleType<> > data;
     
@@ -49,6 +81,7 @@ int main(int arg,char **argv){
     exit(0);
   }*/
   
+  
   {
    
     time_t t;
@@ -57,7 +90,7 @@ int main(int arg,char **argv){
     COSMOLOGY cosmo(Planck);
     
     const double zl = 0.506;
-    const int Npix =  2049;
+    const int Npix =  2*2049;
     const int Nsmooth = 60;
     const bool los =false;
     
@@ -123,7 +156,7 @@ int main(int arg,char **argv){
     std::vector<ImageFinding::CriticalCurve> critcurves;
     int Ncrits;
     
-    ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2/2);
+    ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix);
     
     std::cout << "found " << Ncrits << " critical curves" << std::endl;
     ImageFinding::printCriticalCurves(filename,critcurves);
@@ -154,33 +187,13 @@ int main(int arg,char **argv){
       file << p << std::endl;
     }
     file.close();
-    /*
-    GridMap gridmap(&lens,Npix,center.x,range);
-    
-    PixelMap pmap = gridmap.writePixelMapUniform(KAPPA);
-    pmap.printFITS("!" + filename + ".kappa.fits");
-
-    pmap = gridmap.writePixelMapUniform(ALPHA1);
-    pmap *= 1.0/arcsecTOradians;
-    pmap.printFITS("!" + filename + ".alpha1.fits");
-
-    pmap = gridmap.writePixelMapUniform(ALPHA2);
-    pmap *= 1.0/arcsecTOradians;
-    pmap.printFITS("!" + filename + ".alpha2.fits");
-    
-    pmap = gridmap.writePixelMapUniform(INVMAG);
-    pmap.printFITS("!" + filename + ".invmag.fits");
-    */
-
+ 
     time_t t2 = time(nullptr);
     
     std::cout << "time = " << std::difftime(t2,t)/60 << " min"
     << std::endl;
-    exit(0);
   }
-  
- 
-  return 0;
+
 }
 
 
