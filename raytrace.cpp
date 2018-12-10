@@ -65,7 +65,7 @@ int main(int arg,char **argv){
       file << p[0] << "," << p[1] << std::endl;
     }
     file.close();
-    
+    exit(0);
   }*/
   
   /*{
@@ -90,13 +90,14 @@ int main(int arg,char **argv){
     COSMOLOGY cosmo(Planck);
     
     const double zl = 0.506;
-    const int Npix =  2*2049;
+
+    const int Npix =  2049;
     const int Nsmooth = 60;
-    const bool los =false;
+    const bool los = true;
     
     DLSDS func(cosmo,zl);
     double zs = Utilities::bisection_search<DLSDS,double>(func
-                                ,0.5,zl,10,0.001);
+                                ,0.5,zl,10 ,0.001);
 
     double Dl = cosmo.coorDist(zl);
 
@@ -104,7 +105,7 @@ int main(int arg,char **argv){
     std::cout << "Dls/Ds = " << cosmo.angDist(zl, zs)/cosmo.angDist(zs) << std::endl;
     
     std::string filename = "DataFiles/snap_058_centered.txt";
-    //std::string filename = "DataFiles/snap_058_short.txt";
+    //std::string filename = "DataFiles/snap_058_100000.txt";
     MakeParticleLenses halomaker(
                                  filename
                                  ,csv4,Nsmooth,false
@@ -132,7 +133,7 @@ int main(int arg,char **argv){
     long seed = -11920;
     Lens lens(&seed,zs);
     
-    double range = (Xmax[0]-Xmin[0])*1.05*cosmo.gethubble()/Dl; // angular range of simulation
+    double range = (Xmax[0]-Xmin[0])*1.05/cosmo.gethubble()/Dl; // angular range of simulation
     center *= cosmo.gethubble()/Dl; // convert to angular coordinates
     
     std::cout << "area on sky " << range*range/arcsecTOradians/arcsecTOradians
@@ -144,7 +145,7 @@ int main(int arg,char **argv){
     }
     
     filename = filename + ".cy" + to_string(Npix) + "x" + to_string(Npix) +
-    "S" + to_string(Nsmooth) + "Zl"  + to_string(zl);
+      "S" + to_string(Nsmooth) + "Zl"  + to_string(zl);
     
     if(los){
       lens.GenerateFieldHalos(1.0e11, ShethTormen
@@ -157,7 +158,7 @@ int main(int arg,char **argv){
     std::vector<ImageFinding::CriticalCurve> critcurves;
     int Ncrits;
     
-    ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix);
+    ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2);
     
     std::cout << "found " << Ncrits << " critical curves" << std::endl;
     ImageFinding::printCriticalCurves(filename,critcurves);
@@ -167,28 +168,34 @@ int main(int arg,char **argv){
     grid.writeFits(1,ALPHA2,"!" + filename);
     grid.writeFits(1,INVMAG,"!" + filename);
     
-
-    PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2);
-    map.printFITS("!" + filename + "caust.fits");
-
-    map = ImageFinding::mapCriticalCurves(critcurves,512*2);
-    map.printFITS("!" + filename + "crit.fits");
-
-    double area = 0;
-    int j=0;
-    for(int i = 0 ; i < critcurves.size() ; ++i){
-      if(critcurves[i].critical_area > area){
-        area = critcurves[i].critical_area;
-        j = i;
-      }
-    }
+    filename = "!" + filename;
+    grid.writeFits(1,KAPPA,filename);
+    grid.writeFits(1,ALPHA1,filename);
+    grid.writeFits(1,ALPHA2,filename);
+    grid.writeFits(1,INVMAG,filename);
     
-    std::ofstream file(filename + "caustic.csv");
-    for(Point_2d p : critcurves[j].critical_curve){
-      file << p << std::endl;
+    if(critcurves.size() > 0){
+      PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2);
+      map.printFITS(filename + "caust.fits");
+
+      map = ImageFinding::mapCriticalCurves(critcurves,512*2);
+      map.printFITS(filename + "crit.fits");
+
+      double area = 0;
+      int j=0;
+      for(int i = 0 ; i < critcurves.size() ; ++i){
+        if(critcurves[i].critical_area > area){
+          area = critcurves[i].critical_area;
+          j = i;
+        }
+      }
+    
+      std::ofstream file(filename + "caustic.csv");
+      for(Point_2d p : critcurves[j].critical_curve){
+        file << p << std::endl;
+      }
+      file.close();
     }
-    file.close();
- 
     time_t t2 = time(nullptr);
     
     std::cout << "time = " << std::difftime(t2,t)/60 << " min"
