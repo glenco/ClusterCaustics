@@ -101,7 +101,7 @@ int main(int arg,char **argv){
     double zs = Utilities::bisection_search<DLSDS,double>(func
                                 ,0.5,zl,10 ,0.001);
 
-    double Dl = cosmo.coorDist(zl);
+    double Dl = cosmo.angDist(zl);
 
     std::cout << "zs = " << zs << std::endl;
     std::cout << "Dls/Ds = " << cosmo.angDist(zl, zs)/cosmo.angDist(zs) << std::endl;
@@ -134,7 +134,7 @@ int main(int arg,char **argv){
     long seed = 88277394;
     Lens lens(&seed,zs);
     
-    double range = (Xmax[0]-Xmin[0])*1.05/cosmo.gethubble()/Dl; // angular range of simulation
+    double range = (Xmax[0]-Xmin[0]) * 1.05/cosmo.gethubble()/Dl; // angular range of simulation
     center *= 1.0/cosmo.gethubble()/Dl; // convert to angular coordinates
     
     std::cout << "area on sky " << range*range/arcsecTOradians/arcsecTOradians
