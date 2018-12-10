@@ -89,7 +89,10 @@ int main(int arg,char **argv){
     
     COSMOLOGY cosmo(Planck);
     
-    const double zl = 0.506;
+    cosmo.setOmega_matter(0.24,true);
+    cosmo.sethubble(0.72);
+    
+    const double zl = 0.5294;
     const int Npix =  2049;
     const int Nsmooth = 30;
     const bool los = true;
@@ -103,8 +106,8 @@ int main(int arg,char **argv){
     std::cout << "zs = " << zs << std::endl;
     std::cout << "Dls/Ds = " << cosmo.angDist(zl, zs)/cosmo.angDist(zs) << std::endl;
     
-    //std::string filename = "DataFiles/snap_058_centered.txt";
-    std::string filename = "DataFiles/snap_058_100000.txt";
+    std::string filename = "DataFiles/snap_058_centered.txt";
+    //std::string filename = "DataFiles/snap_058_100000.txt";
     MakeParticleLenses halomaker(
                                  filename
                                  ,csv4,Nsmooth,false
@@ -132,7 +135,7 @@ int main(int arg,char **argv){
     Lens lens(&seed,zs);
     
     double range = (Xmax[0]-Xmin[0])*1.05/cosmo.gethubble()/Dl; // angular range of simulation
-    center *= cosmo.gethubble()/Dl; // convert to angular coordinates
+    center *= 1.0/cosmo.gethubble()/Dl; // convert to angular coordinates
     
     std::cout << "area on sky " << range*range/arcsecTOradians/arcsecTOradians
     << " arcsec^2" << std::endl;

@@ -41,13 +41,36 @@ def cum_dist(x,y = -1,inverse_order = False):
 #df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049.csv")
 #df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049S60.csv")
 
-df_los = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049S60Zl0.506000LOSg.csv")
+
+#print "Hello"
+#df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049S60Zl0.506000caustic.csv"
+#                 , header=None, names=['X', 'Y'],delimiter=' ')
+#print "Hello"
+#x = np.array(df['X'])
+#y = np.array(df['Y'])
+#print "Hello"
+#del df
+#print "Hello"
+#print len(x)
+#plt.plot(x,y)
+#
+#
+#df = pd.read_csv("caustic_test.csv")
+#plt.plot(df['x'],df['y'])
+#
+#
+#
+#plt.show()
+#
+#sys.exit()
+
+df_los = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049S30Zl0.506000LOSg.csv")
 
 df_los = df_los[ df_los['caustic_area'] > 0]
 df_los = df_los[ df_los['critical_area'] > 0]
 
 
-df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049S60Zl0.506000.csv")
+df = pd.read_csv("DataFiles/snap_058_centered.txt.cy2049x2049S30Zl0.506000.csv")
 
 df = df[ df['caustic_area'] > 0]
 df = df[ df['critical_area'] > 0]
@@ -88,7 +111,7 @@ plt.plot(xx,y,label="with LOS")
 
 
 plt.xlim(1.0e-4,100)
-plt.ylim(0,10)
+#plt.ylim(0,10)
 plt.title("cumulative number of caustic curves")
 plt.xscale('log')
 plt.xlabel(r'area of caustic (arcsec$^2$)')
@@ -160,10 +183,10 @@ xx2,yy2 = cum_dist(x2_los,y2,True)
 plt.plot(xx2,yy2,label="with LOS")
 
 plt.xscale('log')
-plt.xlim(1.0e-2,4000)
+plt.xlim(1.0e-1,4000)
 #plt.ylim(143,160)
-plt.ylim(260,285)
-plt.ylim(240,310)
+#plt.ylim(260,285)
+#plt.ylim(240,310)
 
 plt.ylabel(r'cumulative area within caustics (arcsec$^2$)')
 plt.xlabel(r'area of critical (arcsec$^2$)')
@@ -182,8 +205,8 @@ xx,yy = cum_dist(x_los,y,True)
 plt.plot(xx,yy,label="with LOS")
 
 plt.xscale('log')
-plt.xlim(1.0e-2,4000)
-plt.ylim(1550,1740)
+plt.xlim(1.0e-1,4000)
+#plt.ylim(1550,1740)
 
 plt.ylabel(r'cumulative area within caustics (arcsec$^2$)')
 plt.xlabel(r'area of critical (arcsec$^2$)')
