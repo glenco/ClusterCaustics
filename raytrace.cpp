@@ -92,7 +92,7 @@ int main(int arg,char **argv){
     
     const int Npix =  2049;
     const int Nsmooth = 30;
-    const bool los = false;
+    const bool los = true;
       
     //std::string filename = "DataFiles/snap_058_centered.txt";
     std::string filename = "DataFiles/snap_058";
