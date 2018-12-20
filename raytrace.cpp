@@ -93,9 +93,10 @@ int main(int arg,char **argv){
     const int Npix =  2049;
     const int Nsmooth = 30;
     const bool los = false;
+    const bool cluster_on = true;
     long seed = -11920;
 
-    const int projection = 2; // 1,2 or 3
+    const int projection = 3; // 1,2 or 3
     
     Point_2d theta;
     
@@ -152,6 +153,7 @@ int main(int arg,char **argv){
     target *= 1.0e-3/(1+zl);///cosmo.gethubble();
  
     halomaker.Recenter(target);
+    target *= 0;
     
     std::cout << center3d << std::endl;
     Point_2d center(0,0);
@@ -159,6 +161,7 @@ int main(int arg,char **argv){
     
     // cut out a cylinder, could also do a ball
     //halomaker.cylindricalCut(center,(Xmax[0]-Xmin[0])/2);
+    halomaker.radialCut(target,10);
     
     //long seed = 88277394;
     Lens lens(&seed,zs);
@@ -174,14 +177,19 @@ int main(int arg,char **argv){
     std::cout << "area on sky " << range*range/arcsecTOradians/arcsecTOradians
     << " arcsec^2" << std::endl;
     
-    halomaker.CreateHalos(cosmo,zl);
-    for(auto h : halomaker.halos){
-      h->rotate(theta);
-      lens.insertMainHalo(h,zl, true);
+    filename = filename + ".sph" + to_string(Npix) + "x" + to_string(Npix) +
+    "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "prj" + to_string(projection);
+
+    if(cluster_on){
+      halomaker.CreateHalos(cosmo,zl);
+      for(auto h : halomaker.halos){
+        h->rotate(theta);
+        lens.insertMainHalo(h,zl, true);
+      }
+    }else{
+      filename = filename + "NoCL";
     }
     
-    filename = filename + ".cy" + to_string(Npix) + "x" + to_string(Npix) +
-      "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "prj" + to_string(projection);
     
     if(los){
       lens.GenerateFieldHalos(1.0e11, ShethTormen
@@ -207,10 +215,10 @@ int main(int arg,char **argv){
     ImageFinding::printCriticalCurves(filename,critcurves);
     
     if(critcurves.size() > 0){
-      PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2);
+      PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2*2);
       map.printFITS("!" + filename + "caust.fits");
 
-      map = ImageFinding::mapCriticalCurves(critcurves,512*2);
+      map = ImageFinding::mapCriticalCurves(critcurves,512*2*2);
       map.printFITS("!" + filename + "crit.fits");
 
       double area = 0;
