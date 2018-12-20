@@ -96,6 +96,28 @@ int main(int arg,char **argv){
       
     //std::string filename = "DataFiles/snap_058_centered.txt";
     std::string filename = "DataFiles/snap_058";
+      
+    long seed = -11920;
+
+    const int projection = 3; // 1,2 or 3
+    
+    Point_2d theta;
+    
+    if(projection>=1 && projection<=3){
+      if(projection==1) {
+        theta[0]=0;
+        theta[1]=PI/2;
+      }
+      if(projection==2) {
+        theta[0]=PI/2;
+        theta[1]=PI/2;
+      }
+      if(projection==3) {
+        theta[0]=0;
+        theta[1]=0;
+      }
+    }
+    
     //std::string filename = "DataFiles/snap_058_100000.txt";
     MakeParticleLenses halomaker(
                                  filename
@@ -140,8 +162,6 @@ int main(int arg,char **argv){
     // cut out a cylinder, could also do a ball
     //halomaker.cylindricalCut(center,(Xmax[0]-Xmin[0])/2);
     
-    //long seed = 88277394;
-    long seed = -11920;
     Lens lens(&seed,zs);
     
     //range /= cosmo.gethubble();
@@ -157,11 +177,12 @@ int main(int arg,char **argv){
     
     halomaker.CreateHalos(cosmo,zl);
     for(auto h : halomaker.halos){
+      h->rotate(theta);
       lens.insertMainHalo(h,zl, true);
     }
     
     filename = filename + ".cy" + to_string(Npix) + "x" + to_string(Npix) +
-      "S" + to_string(Nsmooth) + "Zl"  + to_string(zl);
+      "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "prj" + to_string(projection);
     
     if(los){
       lens.GenerateFieldHalos(1.0e11, ShethTormen
@@ -187,10 +208,10 @@ int main(int arg,char **argv){
     ImageFinding::printCriticalCurves(filename,critcurves);
     
     if(critcurves.size() > 0){
-      PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2);
+      PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2*2);
       map.printFITS("!" + filename + "caust.fits");
 
-      map = ImageFinding::mapCriticalCurves(critcurves,512*2);
+      map = ImageFinding::mapCriticalCurves(critcurves,512*2*2);
       map.printFITS("!" + filename + "crit.fits");
 
       double area = 0;
