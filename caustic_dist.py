@@ -68,9 +68,14 @@ dir = "DataFiles/"
 
 #tag = "_centered.txt.cy2049x2049S30Zl0.529400"
 tag = ".cy2049x2049S30Zl0.506868prj3"
+tag = ".sph2049x2049S30Zl0.506868prj1"
+
+tag = ".sph2049x2049S30Zl0.506868Zs3.000000prj1"
 
 filename_nlos = dir + "snap_058" + tag + ".csv"
-filename_los = dir + "snap_058" + tag + "LOSg.csv"
+#filename_los = dir + "snap_058" + tag + "LOSg.csv"
+#filename_los = dir + "snap_058" + tag + "LOS.csv"
+filename_los = dir + "snap_058" + tag + "LOS10.csv"
 
 df_los = pd.read_csv(filename_los)
 
@@ -95,7 +100,7 @@ x_los = fact * np.array( df_los['caustic_area'])
 
 xx,y = cum_dist(x_los,-1,True)
 #plt.fill_between(xx,y,label="total with LOS")
-plt.plot(xx,y,label="total with LOS")
+#plt.plot(xx,y,label="total with LOS")
 
 xx,y = cum_dist(x2_los,-1,True)
 plt.fill_between(xx,y,label="tang. with LOS")
@@ -110,7 +115,7 @@ x = fact * np.array( df['caustic_area'])
 
 xx,y = cum_dist(x,-1,True)
 #plt.fill_between(xx,y,label="total no LOS")
-plt.plot(xx,y,label="total no LOS")
+#plt.plot(xx,y,label="total no LOS")
 
 xx,y = cum_dist(x2,-1,True)
 plt.fill_between(xx,y,label="tang. no LOS")
@@ -118,10 +123,10 @@ plt.fill_between(xx,y,label="tang. no LOS")
 
 plt.xlim(1.0e-4,100)
 #plt.ylim(0,10)
-plt.title("cumulative number of caustic curves")
+#plt.title("cumulative number of caustic curves")
 plt.xscale('log')
 plt.yscale('log')
-plt.xlabel(r'area of caustic (arcsec$^2$)')
+plt.xlabel(r'area of caustic curve (arcsec$^2$)')
 plt.ylabel(r'number of critical curves')
 plt.legend()
 
@@ -133,7 +138,7 @@ x2_los = fact * np.array( df2_los['critical_area'] )
 x_los = fact * np.array( df_los['critical_area'] )
 
 xx,y = cum_dist(x_los,-1,True)
-plt.plot(xx,y,label="total with LOS")
+#plt.plot(xx,y,label="total with LOS")
 
 xx,y = cum_dist(x2_los,-1,True)
 plt.fill_between(xx,y,label="tang. with LOS")
@@ -145,17 +150,17 @@ x = fact * np.array( df['critical_area'] )
 
 xx,y = cum_dist(x,-1,True)
 #plt.fill_between(xx,y,label="total no LOS")
-plt.plot(xx,y,label="total no LOS")
+#plt.plot(xx,y,label="total no LOS")
 
 xx,y = cum_dist(x2,-1,True)
 plt.fill_between(xx,y,label="tang. no LOS")
 #plt.plot(xx,y,label="tang. no LOS")
 
-plt.xlim(1.0e-2,100)
-plt.title("cumulative number of critical curves")
+plt.xlim(2.0e-2,100)
+#plt.title("cumulative number of critical curves")
 plt.xscale('log')
 plt.yscale('log')
-plt.xlabel(r'area of critical (arcsec$^2$)')
+plt.xlabel(r'area of critical curve (arcsec$^2$)')
 plt.ylabel(r'number of critical curves')
 plt.legend()
 
@@ -199,7 +204,7 @@ plt.ylim(15.25,17)
 #plt.ylim(4.5,7.5)
 
 plt.ylabel(r'cumulative area within caustics (arcsec$^2$)')
-plt.xlabel(r'area of critical (arcsec$^2$)')
+plt.xlabel(r'area of critical curve (arcsec$^2$)')
 plt.legend()
 
 #plt.savefig('caust_area_tangential.png')
@@ -239,7 +244,7 @@ plt.xlim(1.0e-1,20)
 #plt.ylim(4.5,7.5)
 
 plt.ylabel(r'cumulative area within caustics (arcsec$^2$)')
-plt.xlabel(r'area of critical (arcsec$^2$)')
+plt.xlabel(r'area of critical curve (arcsec$^2$)')
 plt.legend()
 
 plt.savefig(dir + 'cum_causticVScritarea' + tag + '.png')
@@ -273,13 +278,13 @@ plt.fill_between(xx2,yy2,label="tang. no LOS")
 
 
 plt.xscale('log')
-plt.xlim(1.0e-1,20)
+plt.xlim(1.0e-1,10)
 plt.ylim(0,1.4)
 #plt.ylim(15.25,17)
 #plt.ylim(4.5,7.5)
 
 plt.ylabel(r'cumulative area within caustics (arcsec$^2$)')
-plt.xlabel(r'area of critical (arcsec$^2$)')
+plt.xlabel(r'area of critical curve (arcsec$^2$)')
 plt.legend()
 
 plt.savefig(dir + 'cum_causticVScritarea_tang' + tag + '.png')
