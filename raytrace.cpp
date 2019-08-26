@@ -92,7 +92,7 @@ int main(int arg,char **argv){
     
     const int Npix =  2049;
     const int Nsmooth = 30;
-    const bool los = false;
+    const bool los = false;  // line-of-sight structure
     const bool cluster_on = true;
     long seed = -11920;
 
@@ -134,9 +134,11 @@ int main(int arg,char **argv){
     const double zl = halomaker.getZoriginal();
 
     DLSDS func(cosmo,zl);
-    double zs = Utilities::bisection_search<DLSDS,double>(func
-                                                          ,0.5,zl,10 ,0.001);
+    //double zs = Utilities::bisection_search<DLSDS,double>(func
+    //                                                      ,0.5,zl,10 ,0.001);
     
+    
+    double zs = 3;
     double Dl = cosmo.angDist(zl);
     
     std::cout << "zs = " << zs << std::endl;
@@ -178,7 +180,7 @@ int main(int arg,char **argv){
     << " arcsec^2" << std::endl;
     
     filename = filename + ".sph" + to_string(Npix) + "x" + to_string(Npix) +
-    "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "prj" + to_string(projection);
+    "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "Zs"  + to_string(zs) + "prj" + to_string(projection);
 
     if(cluster_on){
       halomaker.CreateHalos(cosmo,zl);
@@ -192,10 +194,11 @@ int main(int arg,char **argv){
     
     
     if(los){
+      std::cout << "Generate LOS structures." << std::endl;
       lens.GenerateFieldHalos(1.0e11, ShethTormen
                               ,PI*range*range/2/degreesTOradians/degreesTOradians
                               ,20,nfw_lens,nsie_gal,2);
-      filename = filename + "LOSg";
+      filename = filename + "LOS10";
     }
     
     std::cout << "Making grid ..." ;
