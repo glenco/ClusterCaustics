@@ -85,15 +85,16 @@ int main(int arg,char **argv){
     time_t t;
     time(&t);
     
-    COSMOLOGY cosmo(Planck);
+    COSMOLOGY cosmo(Planck18);
     
     cosmo.setOmega_matter(0.24,true);
     cosmo.sethubble(0.72);
     
-    const int Npix =  2049;
+    const int Npix =  2*500;
     const int Nsmooth = 30;
     const bool los = false;  // line-of-sight structure
     const bool cluster_on = true;
+    const bool do_maps = false;
     long seed = -11920;
 
     const int projection = 3; // 1,2 or 3
@@ -186,7 +187,7 @@ int main(int arg,char **argv){
       halomaker.CreateHalos(cosmo,zl);
       for(auto h : halomaker.halos){
         h->rotate(theta);
-        lens.insertMainHalo(h,zl, true);
+        lens.moveinMainHalo(*h, true);
       }
     }else{
       filename = filename + "NoCL";
@@ -206,13 +207,14 @@ int main(int arg,char **argv){
     std::vector<ImageFinding::CriticalCurve> critcurves;
     int Ncrits;
     
-    grid.writeFits(1,KAPPA,"!" + filename);
-    grid.writeFits(1,ALPHA1,"!" + filename);
-    grid.writeFits(1,ALPHA2,"!" + filename);
-    grid.writeFits(1,INVMAG,"!" + filename);
-    
+    if(do_maps){
+      grid.writeFits(1,KAPPA,"!" + filename);
+      grid.writeFits(1,ALPHA1,"!" + filename);
+      grid.writeFits(1,ALPHA2,"!" + filename);
+      grid.writeFits(1,INVMAG,"!" + filename);
+    }
     std::cout << std::endl << "Finding critical curves ..." ;
-   ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2);
+    ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2);
     
     std::cout << "found " << Ncrits << " critical curves" << std::endl;
     ImageFinding::printCriticalCurves(filename,critcurves);
@@ -238,7 +240,107 @@ int main(int arg,char **argv){
         file << p << std::endl;
       }
       file.close();
+      
+      // ***************************************************
+      //     image perturbations
+      // ***************************************************
+      
+      const int Nsources = 500;
+      const double r_source = 0.05; // in arcsec
+      
+      /// find largest critical curve
+      area = critcurves[0].critical_area;
+      ImageFinding::CriticalCurve &crit = critcurves[0];
+      for(auto &a : critcurves){
+        if(a.critical_area > area){
+          area = a.critical_area;
+          crit = a;
+        }
+      }
+      
+      vector<Point_2d> ys;
+      Utilities::RandomNumbers_NR ran(seed);
+      crit.RandomSourceWithinCaustic(Nsources, ys, ran);
+
+      std::ofstream file_def(filename + "def.csv");
+
+      std::vector<std::vector<Point_2d> > image_pos(Nsources);
+      for(int j = 0; j < ys.size() ; ++j ){
+        int Nimages;
+        size_t Nimagepoints;
+        std::vector<ImageInfo> imageinfo;
+        ImageFinding::find_images_kist(&lens,ys[j].x, r_source * arcsecTOradians, &grid ,&Nimages,imageinfo,&Nimagepoints,
+                                    100 * arcsecTOradians,true,1);
+        
+        for(int i=0; i < Nimages ; ++i){
+          Point_2d p(imageinfo[i].centroid);
+          cout << j << "  " << i << "  " << p << "  " << imageinfo[i].area/r_source/r_source
+          /arcsecTOradians/arcsecTOradians/PI << endl;
+          image_pos[j].push_back(p);
+        }
+      }
+      
+      lens.GenerateFieldHalos(1.0e11, ShethTormen
+                              ,PI*range*range/2/degreesTOradians/degreesTOradians
+                              ,20,nfw_lens,nsie_gal,2);
+      Grid grid2(&lens,Npix,center.x,range);
+      for(int j = 0; j < ys.size() ; ++j ){
+        int Nimages;
+        size_t Nimagepoints;
+        std::vector<ImageInfo> imageinfo;
+        ImageFinding::find_images_kist(&lens,ys[j].x, r_source * arcsecTOradians, &grid2 ,&Nimages
+                                       ,imageinfo,&Nimagepoints, 100 * arcsecTOradians,true,1);
+        
+        for(auto im : imageinfo) cout << "     " << im.centroid[0] << " " << im.centroid[1] << " - " <<
+          im.area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << endl;
+        
+        if(Nimages > image_pos[j].size() ){
+          
+          int k = 0;
+          for(Point_2d p : image_pos[j] ){
+            Point_2d delta(1.0e6,1.0e6);
+            double length2 = delta.length_sqr();
+            int imax = 0;
+            for(int i=0; i < Nimages ; ++i){
+              Point_2d p2(imageinfo[i].centroid);
+              if( length2 > (p-p2).length_sqr() ){
+                delta = p - p2;
+                length2= delta.length_sqr();
+                imax = i;
+              }
+            }
+            cout << j << "  " << k << "  " << p << " " << delta << "  " << 1.0/imageinfo[imax].aveInvMag() << endl;
+            file_def << j << "  " << k << "  " << p << " " << delta << "  " << 1.0/imageinfo[imax].aveInvMag() << endl;
+            ++k;
+          }
+          
+        }else{
+          
+          for(int i=0; i < Nimages ; ++i){
+            Point_2d p2(imageinfo[i].centroid);
+            Point_2d delta(1.0e6,1.0e6);
+            double length2 = delta.length_sqr();
+            int k = 0, kk = 0;
+            for(Point_2d p : image_pos[j] ){
+              if( length2 > (p-p2).length_sqr() ){
+                delta = p-p2;
+                length2 = delta.length_sqr();
+                k = kk;
+              }
+              ++kk;
+            }
+            cout << j << "  " << i << " " << image_pos[j][k] << " " << delta << " " << 1.0/imageinfo[i].aveInvMag() << endl;
+            file_def << j << " " << i << " " << image_pos[j][k] << " " << delta << " " << 1.0/imageinfo[i].aveInvMag()
+            << endl;
+          }
+          
+        }
+       }
+    
+      file_def.close();
     }
+    
+    
     time_t t2 = time(nullptr);
     
     std::cout << "time = " << std::difftime(t2,t)/60 << " min"
