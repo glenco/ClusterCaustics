@@ -97,7 +97,7 @@ int main(int arg,char **argv){
     const bool do_maps = false;
     long seed = -11920;
 
-    const int projection = 3; // 1,2 or 3
+    const int projection = 1; // 1,2 or 3
     
     Point_2d theta;
     
