@@ -263,7 +263,8 @@ int main(int arg,char **argv){
       crit.RandomSourceWithinCaustic(Nsources, ys, ran);
 
       std::ofstream file_def(filename + "def.csv");
-
+      file_def << "lens image x_image y_image delta_x delta_y mag mag_sign same_number" << endl;
+      
       std::vector<std::vector<Point_2d> > image_pos(Nsources);
       for(int j = 0; j < ys.size() ; ++j ){
         int Nimages;
@@ -294,6 +295,8 @@ int main(int arg,char **argv){
         for(auto im : imageinfo) cout << "     " << im.centroid[0] << " " << im.centroid[1] << " - " <<
           im.area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << endl;
         
+        bool same_number = Nimages == image_pos[j].size();
+        
         if(Nimages > image_pos[j].size() ){
           
           int k = 0;
@@ -309,8 +312,17 @@ int main(int arg,char **argv){
                 imax = i;
               }
             }
-            cout << j << "  " << k << "  " << p << " " << delta << "  " << 1.0/imageinfo[imax].aveInvMag() << endl;
-            file_def << j << "  " << k << "  " << p << " " << delta << "  " << 1.0/imageinfo[imax].aveInvMag() << endl;
+            cout << j << "  " << k << "  " << p << " " << delta << " "
+            << imageinfo[imax].area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
+            << (imageinfo[imax].aveInvMag() > 0)*2 - 1 << " "
+            << same_number
+            << endl;
+
+            file_def << j << "  " << k << "  " << p << " " << delta << " "
+            << imageinfo[imax].area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
+            << (imageinfo[imax].aveInvMag() > 0)*2 - 1 << " "
+            << same_number
+            << endl;
             ++k;
           }
           
@@ -329,8 +341,16 @@ int main(int arg,char **argv){
               }
               ++kk;
             }
-            cout << j << "  " << i << " " << image_pos[j][k] << " " << delta << " " << 1.0/imageinfo[i].aveInvMag() << endl;
-            file_def << j << " " << i << " " << image_pos[j][k] << " " << delta << " " << 1.0/imageinfo[i].aveInvMag()
+            cout << j << " " << i << " " << image_pos[j][k] << " " << delta << " "
+            << imageinfo[i].area /r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
+            << (imageinfo[i].aveInvMag() > 0)*2 - 1 << " "
+            << same_number
+            << endl;
+
+            file_def << j << " " << i << " " << image_pos[j][k] << " " << delta << " "
+            << imageinfo[i].area /r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
+            << (imageinfo[i].aveInvMag() > 0)*2 - 1 << " "
+            << same_number
             << endl;
           }
           
