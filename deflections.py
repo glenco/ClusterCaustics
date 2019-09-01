@@ -10,25 +10,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pa
 
-#filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj3def.csv'
+filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj3def.csv'
+#filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj2def.csv'
 filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj1def.csv'
 
-df = pa.read_csv(filename,sep=' ',names=['lens','image','x','y','dx','dy','mag'])
+#df = pa.read_csv(filename,sep=' ',names=['lens','image','x','y','dx','dy','mag'])
+df = pa.read_csv(filename,sep='\s+')
+#df = pa.read_csv(filename,sep=' ',nrows=65)
+
+for col in df.columns :
+    print col
+
 
 radToArcs = 180.*60*60/np.pi
 
-df['dx'] = radToArcs*df['dx']
-df['dy'] = radToArcs*df['dy']
-df['x'] = radToArcs*df['x']
-df['y'] = radToArcs*df['y']
+df['delta_x'] = radToArcs*df['delta_x']
+df['delta_y'] = radToArcs*df['delta_y']
+df['x_image'] = radToArcs*df['x_image']
+df['y_image'] = radToArcs*df['y_image']
 
-#plt.scatter(df['dx'],df['dy'],s=0.7,alpha=0.)
+#plt.scatter(df['delta_x'],df['delta_y'],s=0.7,alpha=0.)a
 
 neg_images = df[ df['mag'] < 0]
-plt.scatter(neg_images['dx'],neg_images['dy'],s=0.7,alpha=1.0)
+plt.scatter(neg_images['delta_x'],neg_images['delta_y'],s=0.7,alpha=1.0)
 
 pos_images = df[ df['mag'] > 0]
-plt.scatter(pos_images['dx'],pos_images['dy'],s=0.7,alpha=0.7)
+plt.scatter(pos_images['delta_x'],pos_images['delta_y'],s=0.7,alpha=0.7)
 
 plt.xlim(-10,10)
 plt.ylim(-10,10)
@@ -46,14 +53,16 @@ ii = 0
 for l in range(Nlens) :
     data = df[ df['lens'] == l]
     n = data.shape[0]
+    same_number = data['same_number'].iloc[0]
+    #change_image_number = ( data.at[0,'same_number'] == 0 )
+    
+    if( n > 1 and same_number ) :
+        xs = np.array(data['x_image'])
+        ys = np.array(data['y_image'])
 
-    xs = np.array(data['x'])
-    ys = np.array(data['y'])
+        dxs = np.array(data['delta_x'])
+        dys = np.array(data['delta_y'])
 
-    dxs = np.array(data['dx'])
-    dys = np.array(data['dy'])
-
-    if n > 1 :
         for i in range(n) :
             for j in range(i+1,n) :
                 x = xs[i] - ys[j]
@@ -72,7 +81,7 @@ for l in range(Nlens) :
                 dxn = x*dx + y*dy
                 dyn = np.sqrt( ds*ds  - dxn*dxn )    
     
-                xx[ii] = abs(dxn)/s
+                xx[ii] = dxn/s
                 yy[ii] = dyn/s
                 #xx[ii] = abs(dxn)
                 #yy[ii] = dyn
@@ -87,26 +96,25 @@ ax = fig.add_subplot(111)
 
 ax.scatter(xx,yy,s=1.8,alpha=0.7)
 
-plt.xlim(0,0.5)
+plt.xlim(-0.5,0.5)
 plt.ylim(0,0.5)
 plt.xlabel('arcsec')
 plt.ylabel('arcsec')
 ax.set_aspect(aspect=1.0)
 
 s = xx * xx + yy * yy
-print s
 
 s = np.sort(s)
 
 r = np.sqrt( s[ int(0.95*ii) ] )
-x = r * np.cos( np.arange(0,np.pi/2,np.pi/1000) )
-y = r * np.sin( np.arange(0,np.pi/2,np.pi/1000) )
+x = r * np.cos( np.arange(0,np.pi,np.pi/1000) )
+y = r * np.sin( np.arange(0,np.pi,np.pi/1000) )
 
 plt.plot(x,y,label='95%')
 
 r = np.sqrt( s[ int(0.68*ii) ] )
-x = r * np.cos( np.arange(0,np.pi/2,np.pi/1000) )
-y = r * np.sin( np.arange(0,np.pi/2,np.pi/1000) )
+x = r * np.cos( np.arange(0,np.pi,np.pi/1000) )
+y = r * np.sin( np.arange(0,np.pi,np.pi/1000) )
 
 plt.plot(x,y,label='68%')
 

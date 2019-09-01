@@ -247,6 +247,8 @@ int main(int arg,char **argv){
       
       const int Nsources = 500;
       const double r_source = 0.05; // in arcsec
+      const bool fixed_image = true; // fixes one image to the same place when the the LSS is present or not
+      const string deflection_sufix= "fixdef.csv";
       
       /// find largest critical curve
       area = critcurves[0].critical_area;
@@ -259,10 +261,12 @@ int main(int arg,char **argv){
       }
       
       vector<Point_2d> ys;
+      vector<Point_2d> index_image;
+      
       Utilities::RandomNumbers_NR ran(seed);
       crit.RandomSourceWithinCaustic(Nsources, ys, ran);
 
-      std::ofstream file_def(filename + "def.csv");
+      std::ofstream file_def(filename + deflection_sufix);
       file_def << "lens image x_image y_image delta_x delta_y mag mag_sign same_number" << endl;
       
       std::vector<std::vector<Point_2d> > image_pos(Nsources);
@@ -272,7 +276,8 @@ int main(int arg,char **argv){
         std::vector<ImageInfo> imageinfo;
         ImageFinding::find_images_kist(&lens,ys[j].x, r_source * arcsecTOradians, &grid ,&Nimages,imageinfo,&Nimagepoints,
                                     100 * arcsecTOradians,true,1);
-        
+      
+        index_image.push_back(imageinfo[0].centroid);
         for(int i=0; i < Nimages ; ++i){
           Point_2d p(imageinfo[i].centroid);
           cout << j << "  " << i << "  " << p << "  " << imageinfo[i].area/r_source/r_source
@@ -284,6 +289,20 @@ int main(int arg,char **argv){
       lens.GenerateFieldHalos(1.0e11, ShethTormen
                               ,PI*range*range/2/degreesTOradians/degreesTOradians
                               ,20,nfw_lens,nsie_gal,2);
+
+      Point point;
+      LinkToSourcePoints(&point, 1);
+      if(fixed_image){
+        int i=0;
+        for(Point_2d p : index_image){
+          point.x[0] = p[0]; point.x[1] = p[1];
+          lens.rayshooterInternal(1,&point);
+          ys[i][0] = point.image->x[0];
+          ys[i++][1] = point.image->x[1];
+        }
+      }
+      
+      
       Grid grid2(&lens,Npix,center.x,range);
       for(int j = 0; j < ys.size() ; ++j ){
         int Nimages;
@@ -318,7 +337,7 @@ int main(int arg,char **argv){
             << same_number
             << endl;
 
-            file_def << j << "  " << k << "  " << p << " " << delta << " "
+            file_def << j << " " << k << " " << p << " " << delta << " "
             << imageinfo[imax].area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
             << (imageinfo[imax].aveInvMag() > 0)*2 - 1 << " "
             << same_number
