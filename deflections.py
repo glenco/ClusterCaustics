@@ -10,9 +10,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pa
 
+frac = False
+
 filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj3def.csv'
+name = 'def_prj3.png'
 #filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj2def.csv'
-filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj1def.csv'
+#name = 'def_prj2.png'
+#filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj1def.csv'
+#name = 'def_prj1.png'
+
+#filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj3fixdef.csv'
+#name = 'fixdef_prj3.png'
+#filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj2fixdef.csv'
+#name = 'fixdef_prj2.png'
+#filename = 'DataFiles/snap_058.sph1000x1000S30Zl0.506868Zs3.000000prj1fixdef.csv'
+#name = 'fixdef_prj1.png'
+
 
 #df = pa.read_csv(filename,sep=' ',names=['lens','image','x','y','dx','dy','mag'])
 df = pa.read_csv(filename,sep='\s+')
@@ -96,10 +109,20 @@ ax = fig.add_subplot(111)
 
 ax.scatter(xx,yy,s=1.8,alpha=0.7)
 
-plt.xlim(-0.5,0.5)
-plt.ylim(0,0.5)
-plt.xlabel('arcsec')
-plt.ylabel('arcsec')
+if frac :
+    plt.xlim(-0.5,0.5)
+    plt.ylim(0,0.5)
+    
+    plt.xlabel(r'$\delta_\parallel / \Delta \theta$')
+    plt.ylabel(r'$\delta_\perp /  \Delta \theta$')
+
+else :
+    plt.xlim(-0.5,0.5)
+    plt.ylim(0,0.5)
+ 
+    plt.xlabel('arcsec')
+    plt.ylabel('arcsec')
+    
 ax.set_aspect(aspect=1.0)
 
 s = xx * xx + yy * yy
@@ -119,4 +142,5 @@ y = r * np.sin( np.arange(0,np.pi,np.pi/1000) )
 plt.plot(x,y,label='68%')
 
 plt.legend()
+plt.savefig(name)
 plt.show()
