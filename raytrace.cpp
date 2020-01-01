@@ -95,9 +95,9 @@ int main(int arg,char **argv){
     const bool los = true;  // line-of-sight structure
     const bool cluster_on = true;
     const bool do_maps = true;
-    const double zs = 3;
-
-
+    const double zs = 1.5;
+    const bool no_images = true;
+ 
     //long seed = -11920;
     long seed = time(&t);
 
@@ -260,6 +260,8 @@ int main(int arg,char **argv){
       }
       file.close();
       
+      if(no_images) exit(0);
+   
       // ***************************************************
       //     image perturbations
       // ***************************************************
