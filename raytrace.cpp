@@ -93,12 +93,12 @@ int main(int arg,char **argv){
     const int Npix =  2*500;// number of pixels in initial grid of rays
     const int Nsmooth = 30;// nearest neighbors smoothing scale
     const bool los = true;  // line-of-sight structure
+
     const bool cluster_on = true;  // toggle including cluster simulation
     const bool do_maps = false;    // map output maps or no
     const double zs = 1.5;         // source redshift
     const bool no_images_perturb = true;
     
-
     //long seed = -11920;
     long seed = time(&t);
 
@@ -282,7 +282,7 @@ int main(int arg,char **argv){
       file.close();
       
       if(no_images_perturb) exit(0);
-      
+   
       // ***************************************************
       //     image perturbations
       //

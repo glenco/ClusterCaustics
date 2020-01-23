@@ -70,7 +70,7 @@ dir = "DataFiles/"
 tag = ".cy2049x2049S30Zl0.506868prj3"
 tag = ".sph2049x2049S30Zl0.506868prj1"
 
-tag = ".sph2049x2049S30Zl0.506868Zs3.000000prj1"
+tag = ".sph2049x2049S30Zl0.506868Zs3.000000prj2"
 
 filename_nlos = dir + "snap_058" + tag + ".csv"
 #filename_los = dir + "snap_058" + tag + "LOSg.csv"
@@ -279,7 +279,7 @@ plt.fill_between(xx2,yy2,label="tang. no LOS")
 
 plt.xscale('log')
 plt.xlim(1.0e-1,10)
-plt.ylim(0,1.4)
+#plt.ylim(0,1.4)
 #plt.ylim(15.25,17)
 #plt.ylim(4.5,7.5)
 
