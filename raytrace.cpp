@@ -90,18 +90,21 @@ int main(int arg,char **argv){
     cosmo.setOmega_matter(0.24,true);
     cosmo.sethubble(0.72);
     
-    const int Npix =  2*500;
-    const int Nsmooth = 30;
+    const int Npix =  2*500;// number of pixels in initial grid of rays
+    const int Nsmooth = 30;// nearest neighbors smoothing scale
     const bool los = true;  // line-of-sight structure
-    const bool cluster_on = true;
-    const bool do_maps = true;
-    const double zs = 3;
-
+    const bool cluster_on = true;  // toggle including cluster simulation
+    const bool do_maps = false;    // map output maps or no
+    const double zs = 1.5;         // source redshift
+    const bool no_images_perturb = true;
+    
 
     //long seed = -11920;
     long seed = time(&t);
 
-    const int projection = 1; // 1,2 or 3
+    //which projection of simulation
+    const int projection = 2; // 1,2 or 3
+    
     //std::string filename = "DataFiles/snap_058_centered.txt";
     const std::string inputfilename = "DataFiles/snap_058";
     const std::string output_dir = "Output1/";
@@ -119,8 +122,8 @@ int main(int arg,char **argv){
 
     }
     
+    // make the rotation angle for the projection
     Point_2d theta;
-    
     if(projection>=1 && projection<=3){
       if(projection==1) {
         theta[0]=0;
@@ -136,44 +139,45 @@ int main(int arg,char **argv){
       }
     }
     
-    
-    
-    //std::string filename = "DataFiles/snap_058_100000.txt";
+    // this object is used to interface with the simulation file
+    // , do the smoothing and make LensHalos for each type of
+    // particle
     MakeParticleLenses halomaker(
                                  inputfilename
-                                 ,gadget2,Nsmooth,false
+                                 ,gadget2   // the sim file format
+                                 ,Nsmooth
+                                 ,false     // takes particle type into account
                                  );
     
-    //std::string filename = "DataFiles/snap_69";
-    
-    //MakeParticleLenses halomaker(
-    //                             filename
-    //                             ,gadget2,Nsmooth,false
-    //                             );
-
-//    const double zl = 0.5294;
+    // gets the original redshift that was in the sim file
     const double zl = halomaker.getZoriginal();
 
-    DLSDS func(cosmo,zl);
+    //DLSDS func(cosmo,zl);
     //double zs = Utilities::bisection_search<DLSDS,double>(func
     //                                                      ,0.5,zl,10 ,0.001);
     
     
+    // angular size distance to the lens redshift
     double Dl = cosmo.angDist(zl);
     
     std::cout << "zs = " << zs << std::endl;
     std::cout << "Dls/Ds = " << cosmo.angDist(zl, zs)/cosmo.angDist(zs) << std::endl;
     
     Point_3d Xmax,Xmin;
+    // gets the bounding box of the simulation particles
     halomaker.getBoundingBox(Xmin, Xmax);
     std::cout << "Xmin = " << Xmin << std::endl;
     std::cout << "Xmax = " << Xmax << std::endl;
     //Point_3d center3d = (Xmax + Xmin)/2;
+    // position of the densest particle
     Point_3d center3d = halomaker.densest_particle();
     
+    // set position around which you want to extract particles
+    // i.e. the center of the lens
     Point_3d target(500689.656250 , 498223.187500, 494912.468750);
     target *= 1.0e-3/(1+zl);///cosmo.gethubble();
  
+    // recenters simulation to target
     halomaker.Recenter(target);
     target *= 0;
     
@@ -181,8 +185,10 @@ int main(int arg,char **argv){
     Point_2d center(0,0);
     std::cout << center << std::endl;
     
-    // cut out a cylinder, could also do a ball
+    // cut out a cylinder
     //halomaker.cylindricalCut(center,(Xmax[0]-Xmin[0])/2);
+    
+    //cut out a ball centered on target
     halomaker.radialCut(target,10);
     
     //long seed = 88277394;
@@ -203,16 +209,23 @@ int main(int arg,char **argv){
     "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "Zs"  + to_string(zs) + "prj" + to_string(projection);
 
     if(cluster_on){
+      // create the LensHalos, there will be one LensHalo
+      // for each type of particle in this case
       halomaker.CreateHalos(cosmo,zl);
+      // transfer the halos to the lens
       for(auto h : halomaker.halos){
         h->rotate(theta);
         lens.moveinMainHalo(*h, true);
+        // By moving the halos into the lens one avoids
+        // copying what might be a large amount of data.
+        // The LensHalo in halomaker is now void.
       }
     }else{
       filename_tmp = filename_tmp + "NoCL";
     }
     
     
+    // this generates random halos along the line-of-sight
     if(los){
       std::cout << "Generate LOS structures." << std::endl;
       lens.GenerateFieldHalos(1.0e11, ShethTormen
@@ -221,23 +234,30 @@ int main(int arg,char **argv){
       filename_tmp = filename_tmp + "LOS10";
     }
     
+    // here we shoot the rays in an initial grid
     std::cout << "Making grid ..." ;
     Grid grid(&lens,Npix,center.x,range);
-    std::vector<ImageFinding::CriticalCurve> critcurves;
-    int Ncrits;
-    
+
+    // output maps of the lensing quantities
     if(do_maps){
       grid.writeFits(1,KAPPA,"!" + filename_tmp);
       grid.writeFits(1,ALPHA1,"!" + filename_tmp);
       grid.writeFits(1,ALPHA2,"!" + filename_tmp);
       grid.writeFits(1,INVMAG,"!" + filename_tmp);
     }
+
+    // now we will find the critical curves
+    std::vector<ImageFinding::CriticalCurve> critcurves;
+    int Ncrits;
     std::cout << std::endl << "Finding critical curves ..." ;
     ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2);
     
     std::cout << "found " << Ncrits << " critical curves" << std::endl;
+    
+    // print critical/caustic curve information to a file
     ImageFinding::printCriticalCurves(filename_tmp,critcurves);
     
+    // make maps of the critical curves
     if(critcurves.size() > 0){
       PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2*2);
       map.printFITS("!" + filename_tmp + "caust.fits");
@@ -254,21 +274,27 @@ int main(int arg,char **argv){
         }
       }
     
+      // output points along caustic curve
       std::ofstream file(filename_tmp + "caustic.csv");
       for(Point_2d p : critcurves[j].critical_curve){
         file << p << std::endl;
       }
       file.close();
       
+      if(no_images_perturb) exit(0);
+      
       // ***************************************************
       //     image perturbations
+      //
+      //   Here I am generating random LOS objects and seeing
+      //   how the image positions change.
       // ***************************************************
       
       const int Nsources = 500;
       const double r_source = 0.05; // in arcsec
       const bool fixed_image = true; // fixes one image to the same place when the the LSS is present or not
       const string deflection_sufix= "fixdef.csv";
-      
+     
       /// find largest critical curve
       area = critcurves[0].critical_area;
       ImageFinding::CriticalCurve &crit = critcurves[0];
