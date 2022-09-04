@@ -124,6 +124,7 @@ int main(int arg,char **argv){
     
     // make the rotation angle for the projection
     Point_2d theta;
+
     if(projection>=1 && projection<=3){
       if(projection==1) {
         theta[0]=0;
@@ -142,6 +143,7 @@ int main(int arg,char **argv){
     // this object is used to interface with the simulation file
     // , do the smoothing and make LensHalos for each type of
     // particle
+
     MakeParticleLenses halomaker(
                                  inputfilename
                                  ,gadget2   // the sim file format
@@ -156,7 +158,6 @@ int main(int arg,char **argv){
     //double zs = Utilities::bisection_search<DLSDS,double>(func
     //                                                      ,0.5,zl,10 ,0.001);
     
-    
     // angular size distance to the lens redshift
     double Dl = cosmo.angDist(zl);
     
@@ -168,6 +169,7 @@ int main(int arg,char **argv){
     halomaker.getBoundingBox(Xmin, Xmax);
     std::cout << "Xmin = " << Xmin << std::endl;
     std::cout << "Xmax = " << Xmax << std::endl;
+
     //Point_3d center3d = (Xmax + Xmin)/2;
     // position of the densest particle
     Point_3d center3d = halomaker.densest_particle();
@@ -213,6 +215,7 @@ int main(int arg,char **argv){
       // for each type of particle in this case
       halomaker.CreateHalos(cosmo,zl);
       // transfer the halos to the lens
+
       for(auto h : halomaker.halos){
         h->rotate(theta);
         lens.moveinMainHalo(*h, true);
@@ -235,6 +238,7 @@ int main(int arg,char **argv){
     }
     
     // here we shoot the rays in an initial grid
+
     std::cout << "Making grid ..." ;
     Grid grid(&lens,Npix,center.x,range);
 
@@ -258,6 +262,7 @@ int main(int arg,char **argv){
     ImageFinding::printCriticalCurves(filename_tmp,critcurves);
     
     // make maps of the critical curves
+
     if(critcurves.size() > 0){
       PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2*2);
       map.printFITS("!" + filename_tmp + "caust.fits");
