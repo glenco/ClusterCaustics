@@ -32,7 +32,7 @@ df = pa.read_csv(filename,sep='\s+')
 #df = pa.read_csv(filename,sep=' ',nrows=65)
 
 for col in df.columns :
-    print col
+    print(col)
 
 
 radToArcs = 180.*60*60/np.pi
