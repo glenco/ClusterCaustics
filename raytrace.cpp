@@ -93,13 +93,10 @@ int main(int arg,char **argv){
     const int Npix =  2049;
     const int Nsmooth = 30;
     const bool los = true;
-      
-    //std::string filename = "DataFiles/snap_058_centered.txt";
-    std::string filename = "DataFiles/snap_058";
-      
+    const bool cluster_on = true;
     long seed = -11920;
 
-    const int projection = 3; // 1,2 or 3
+    const int projection = 1; // 1,2 or 3
     
     Point_2d theta;
     
@@ -118,6 +115,9 @@ int main(int arg,char **argv){
       }
     }
     
+    //std::string filename = "DataFiles/snap_058_centered.txt";
+    std::string filename = "DataFiles/snap_058";
+
     //std::string filename = "DataFiles/snap_058_100000.txt";
     MakeParticleLenses halomaker(
                                  filename
@@ -154,13 +154,16 @@ int main(int arg,char **argv){
     target *= 1.0e-3/(1+zl);///cosmo.gethubble();
  
     halomaker.Recenter(target);
+    target *= 0;
     
-    std::cout << center3d << std::endl;
+      std::cout << center3d << std::endl;
+      
     Point_2d center(0,0);
     std::cout << center << std::endl;
     
     // cut out a cylinder, could also do a ball
     //halomaker.cylindricalCut(center,(Xmax[0]-Xmin[0])/2);
+    halomaker.radialCut(target,10);
     
     Lens lens(&seed,zs);
     
@@ -175,20 +178,24 @@ int main(int arg,char **argv){
     std::cout << "area on sky " << range*range/arcsecTOradians/arcsecTOradians
     << " arcsec^2" << std::endl;
     
-    halomaker.CreateHalos(cosmo,zl);
-    for(auto h : halomaker.halos){
-      h->rotate(theta);
-      lens.insertMainHalo(h,zl, true);
+    filename = filename + ".sph" + to_string(Npix) + "x" + to_string(Npix) +
+    "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "prj" + to_string(projection);
+
+    if(cluster_on){
+      halomaker.CreateHalos(cosmo,zl);
+      for(auto h : halomaker.halos){
+        h->rotate(theta);
+        lens.insertMainHalo(h,zl, true);
+      }
+    }else{
+      filename = filename + "NoCL";
     }
-    
-    filename = filename + ".cy" + to_string(Npix) + "x" + to_string(Npix) +
-      "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "prj" + to_string(projection);
-    
+      
     if(los){
-      lens.GenerateFieldHalos(1.0e11, ShethTormen
+      lens.GenerateFieldHalos(1.0e10, ShethTormen
                               ,PI*range*range/2/degreesTOradians/degreesTOradians
                               ,20,nfw_lens,nsie_gal,2);
-      filename = filename + "LOSg";
+      filename = filename + "LOS10";
     }
     
     std::cout << "Making grid ..." ;
