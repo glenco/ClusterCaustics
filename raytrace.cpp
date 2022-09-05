@@ -19,10 +19,10 @@ using namespace std;
 
 
 
-inline bool exists (const std::string& name) {
-  struct stat buffer;
-  return (stat (name.c_str(), &buffer) == 0);
-}
+//inline bool exists (const std::string& name) {
+//  struct stat buffer;
+//  return (stat (name.c_str(), &buffer) == 0);
+//}
 
 struct DLSDS{
   DLSDS(COSMOLOGY &c,double zl):zl(zl),cosmo(c){
@@ -85,7 +85,7 @@ int main(int arg,char **argv){
     time_t t;
     time(&t);
     
-    COSMOLOGY cosmo(Planck18);
+    COSMOLOGY cosmo(CosmoParamSet::Planck18);
     
     cosmo.setOmega_matter(0.24,true);
     cosmo.sethubble(0.72);
@@ -146,7 +146,7 @@ int main(int arg,char **argv){
 
     MakeParticleLenses halomaker(
                                  inputfilename
-                                 ,gadget2   // the sim file format
+                                 ,SimFileFormat::gadget2   // the sim file format
                                  ,Nsmooth
                                  ,false     // takes particle type into account
                                  );
@@ -164,7 +164,7 @@ int main(int arg,char **argv){
     std::cout << "zs = " << zs << std::endl;
     std::cout << "Dls/Ds = " << cosmo.angDist(zl, zs)/cosmo.angDist(zs) << std::endl;
     
-    Point_3d Xmax,Xmin;
+    Point_3d<double> Xmax,Xmin;
     // gets the bounding box of the simulation particles
     halomaker.getBoundingBox(Xmin, Xmax);
     std::cout << "Xmin = " << Xmin << std::endl;
@@ -172,11 +172,11 @@ int main(int arg,char **argv){
 
     //Point_3d center3d = (Xmax + Xmin)/2;
     // position of the densest particle
-    Point_3d center3d = halomaker.densest_particle();
+    Point_3d<double> center3d = halomaker.densest_particle();
     
     // set position around which you want to extract particles
     // i.e. the center of the lens
-    Point_3d target(500689.656250 , 498223.187500, 494912.468750);
+    Point_3d<double> target(500689.656250 , 498223.187500, 494912.468750);
     target *= 1.0e-3/(1+zl);///cosmo.gethubble();
  
     // recenters simulation to target
@@ -231,9 +231,9 @@ int main(int arg,char **argv){
     // this generates random halos along the line-of-sight
     if(los){
       std::cout << "Generate LOS structures." << std::endl;
-      lens.GenerateFieldHalos(1.0e11, ShethTormen
+      lens.GenerateFieldHalos(1.0e11,MassFuncType::ShethTormen
                               ,PI*range*range/2/degreesTOradians/degreesTOradians
-                              ,20,nfw_lens,nsie_gal,2);
+                              ,20,LensHaloType::nfw_lens,GalaxyLensHaloType::nsie_gal,2);
       filename_tmp = filename_tmp + "LOS10";
     }
     
@@ -244,10 +244,10 @@ int main(int arg,char **argv){
 
     // output maps of the lensing quantities
     if(do_maps){
-      grid.writeFits(1,KAPPA,"!" + filename_tmp);
-      grid.writeFits(1,ALPHA1,"!" + filename_tmp);
-      grid.writeFits(1,ALPHA2,"!" + filename_tmp);
-      grid.writeFits(1,INVMAG,"!" + filename_tmp);
+      grid.writeFits(1,LensingVariable::KAPPA,"!" + filename_tmp);
+      grid.writeFits(1,LensingVariable::ALPHA1,"!" + filename_tmp);
+      grid.writeFits(1,LensingVariable::ALPHA2,"!" + filename_tmp);
+      grid.writeFits(1,LensingVariable::INVMAG,"!" + filename_tmp);
     }
 
     // now we will find the critical curves
@@ -281,7 +281,7 @@ int main(int arg,char **argv){
     
       // output points along caustic curve
       std::ofstream file(filename_tmp + "caustic.csv");
-      for(Point_2d p : critcurves[j].critical_curve){
+      for(RAY p : critcurves[j].critcurve){
         file << p << std::endl;
       }
       file.close();
@@ -336,9 +336,9 @@ int main(int arg,char **argv){
         }
       }
       
-      lens.GenerateFieldHalos(1.0e11, ShethTormen
+      lens.GenerateFieldHalos(1.0e11,MassFuncType::ShethTormen
                               ,PI*range*range/2/degreesTOradians/degreesTOradians
-                              ,20,nfw_lens,nsie_gal,2);
+                              ,20,LensHaloType::nfw_lens,GalaxyLensHaloType::nsie_gal,2);
 
       Point point;
       LinkToSourcePoints(&point, 1);
@@ -428,7 +428,6 @@ int main(int arg,char **argv){
     
       file_def.close();
     }
-    
     
     time_t t2 = time(nullptr);
     
