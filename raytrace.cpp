@@ -90,15 +90,20 @@ int main(int arg,char **argv){
   cosmo.setOmega_matter(0.24,true);
   cosmo.sethubble(0.72);
   
-  const int Npix =  2*500;// number of pixels in initial grid of rays
+  const int Npix =  1000;// number of pixels in initial grid of rays
   const int Nsmooth = 30;// nearest neighbors smoothing scale
   const bool los_on = false;  // line-of-sight structure
   
   const bool cluster_on = true;  // toggle including cluster simulation
   const bool do_maps = true;    // map output maps or no
-  const std::vector<double> zss = {1.0,2.0};         // source redshift
+  //const std::vector<double> zss = {0.6,0.7,0.8,0.9,1.0,1.5,2.0};         // source redshift
+  //const std::vector<double> zss = {2.0,1.5,1.0,0.9,0.8,0.7,0.6,0.5};         // source redshift
+  const std::vector<double> zss = {2.0};         // source redshift
+   //const std::vector<double> zss = {1.0};         // source redshift
   const bool no_images_perturb = true;
   
+  const double range = 20*arcminTOradians;
+
   //long seed = -11920;
   long seed = time(&t);
   
@@ -107,7 +112,7 @@ int main(int arg,char **argv){
   
   //std::string filename = "DataFiles/snap_058_centered.txt";
   const std::string inputfilename = "DataFiles/snap_058";
-  const std::string output_dir = "Output1/";
+  const std::string output_dir = "NewOutputMaps/";
   const std::string fileprefix = "snap_058";
   
   {
@@ -116,7 +121,7 @@ int main(int arg,char **argv){
     logfile << "Nsmooth : " << Nsmooth << endl;
     logfile << "projection : " << projection << endl;
     logfile << "zs : ";
-    for(double zs : zss) logfile << zs << " " << endl;
+    for(double zs : zss) logfile << zs << " ";
     logfile << endl;
     logfile << "los_on : " << los_on << endl;
     logfile << "cluster_on : " << cluster_on << endl;
@@ -163,8 +168,9 @@ int main(int arg,char **argv){
   // angular size distance to the lens redshift
   double Dl = cosmo.angDist(zl);
   
-  std::cout << "zs = " << zss.back() << std::endl;
-  std::cout << "Dls/Ds = " << cosmo.angDist(zl,zss.back())/cosmo.angDist(zss.back()) << std::endl;
+  std::cout << "zs = " << zss[0] << std::endl;
+  std::cout << "zl = " << zl << std::endl;
+  std::cout << "Dls/Ds = " << cosmo.angDist(zl,zss[0])/cosmo.angDist(zss[0]) << std::endl;
   
   Point_3d<double> Xmax,Xmin;
   // gets the bounding box of the simulation particles
@@ -193,7 +199,7 @@ int main(int arg,char **argv){
   //halomaker.cylindricalCut(center,(Xmax[0]-Xmin[0])/2);
   
   //cut out a ball centered on target
-  halomaker.radialCut(target,10);
+  halomaker.radialCut(target,20);
   
   //range /= cosmo.gethubble();
   //double range = (Xmax[0]-Xmin[0])*1.05/cosmo.gethubble()/Dl; // angular range of simulation
@@ -201,12 +207,11 @@ int main(int arg,char **argv){
   
   // 400 arcsecond range
   //double range = 4*300*arcsecTOradians;
-  double range = 400*arcsecTOradians;
   
   std::cout << "area on sky " << range*range/arcsecTOradians/arcsecTOradians
   << " arcsec^2" << std::endl;
   
-  Lens lens(&seed,zss.back(),cosmo);
+  Lens lens(&seed,zss[0],cosmo);
   
   if(cluster_on){
     // create the LensHalos, there will be one LensHalo
@@ -254,10 +259,24 @@ int main(int arg,char **argv){
       //grid.writeFits(1,LensingVariable::ALPHA1,"!" + filename_tmp);
       //grid.writeFits(1,LensingVariable::ALPHA2,"!" + filename_tmp);
       grid.writeFits(1,LensingVariable::INVMAG,"!" + filename_tmp);
+      grid.writeFits(1,LensingVariable::GAMMA1,"!" + filename_tmp);
+      grid.writeFits(1,LensingVariable::GAMMA2,"!" + filename_tmp);
       PixelMap magmap = grid.writePixelMap(LensingVariable::INVMAG);
       
       for(size_t i=0 ; i<magmap.size() ; ++i) magmap[i] = 1/magmap[i];
       magmap.printFITS("!" + filename_tmp + ".mag.fits");
+      
+      PixelMap kappamap = grid.writePixelMap(LensingVariable::KAPPA);
+      PixelMap gammamap = grid.writePixelMap(LensingVariable::GAMMA1);
+      
+      for(size_t i=0 ; i<kappamap.size() ; ++i) gammamap[i] /= (1+kappamap[i]);
+      gammamap.printFITS("!" + filename_tmp + ".g1.fits");
+      
+      gammamap = grid.writePixelMap(LensingVariable::GAMMA2);
+      
+      for(size_t i=0 ; i<kappamap.size() ; ++i) gammamap[i] /= (1+kappamap[i]);
+      gammamap.printFITS("!" + filename_tmp + ".g2.fits");
+
     }
     
     // now we will find the critical curves
@@ -293,10 +312,11 @@ int main(int arg,char **argv){
       }
       file.close();
       
-      if(no_images_perturb) exit(0);
     }
   }
-  
+
+  if(no_images_perturb) exit(1);
+
   // ***************************************************
   //     image perturbations
   //
@@ -351,8 +371,7 @@ int main(int arg,char **argv){
                             ,PI*range*range/2/degreesTOradians/degreesTOradians
                             ,20,LensHaloType::nfw_lens,GalaxyLensHaloType::nsie_gal,2);
     
-    Point point;
-    LinkToSourcePoints(&point, 1);
+    LinkedPoint point;
     if(fixed_image){
       int i=0;
       for(Point_2d p : index_image){
