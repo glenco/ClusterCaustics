@@ -17,25 +17,6 @@
 
 using namespace std;
 
-
-
-//inline bool exists (const std::string& name) {
-//  struct stat buffer;
-//  return (stat (name.c_str(), &buffer) == 0);
-//}
-
-struct DLSDS{
-  DLSDS(COSMOLOGY &c,double zl):zl(zl),cosmo(c){
-    
-    // Dl = cosmo.angDist(zl);
-  };
-  
-  double zl;
-  COSMOLOGY &cosmo;
-  
-  double operator()(double zs){return cosmo.angDist(zl,zs)/cosmo.angDist(zs);}
-};
-
 int main(int arg,char **argv){
   
   /*{  // Test of critical curve ordering
@@ -98,7 +79,7 @@ int main(int arg,char **argv){
   const bool do_maps = true;    // map output maps or no
   //const std::vector<double> zss = {0.6,0.7,0.8,0.9,1.0,1.5,2.0};         // source redshift
   //const std::vector<double> zss = {2.0,1.5,1.0,0.9,0.8,0.7,0.6,0.5};         // source redshift
-  const std::vector<double> zss = {2.0};         // source redshift
+  std::vector<double> zss = {2.0};         // source redshift
    //const std::vector<double> zss = {1.0};         // source redshift
   const bool no_images_perturb = true;
   
@@ -216,7 +197,8 @@ int main(int arg,char **argv){
   if(cluster_on){
     // create the LensHalos, there will be one LensHalo
     // for each type of particle in this case
-    halomaker.CreateHalos(cosmo,zl);
+    halomaker.CreateHalos(cosmo,zl,0);
+    
     // transfer the halos to the lens
     
     for(auto h : halomaker.halos){
@@ -340,86 +322,89 @@ int main(int arg,char **argv){
   }
   
   vector<Point_2d> ys;
-  vector<Point_2d> index_image;
-  
   Utilities::RandomNumbers_NR ran(seed);
   crit.RandomSourceWithinCaustic(Nsources, ys, ran);
   
-  Grid grid(&lens,Npix,center.x,range);
+  GridMap gridmap(&lens,Npix,center.x,range);
   {
     std::ofstream file_def(filename_tmp + deflection_sufix);
     file_def << "lens image x_image y_image delta_x delta_y mag mag_sign same_number" << endl;
     
-    std::vector<std::vector<Point_2d> > image_pos(Nsources);
+    std::vector<std::vector<RAY> > image_pos(Nsources);
     for(int j = 0; j < ys.size() ; ++j ){
-      int Nimages;
-      size_t Nimagepoints;
-      std::vector<ImageInfo> imageinfo;
-      ImageFinding::find_images_kist(&lens,ys[j].x, r_source * arcsecTOradians, &grid ,&Nimages,imageinfo,&Nimagepoints,
-                                     100 * arcsecTOradians,true,1);
       
-      index_image.push_back(imageinfo[0].centroid);
-      for(int i=0; i < Nimages ; ++i){
-        Point_2d p(imageinfo[i].centroid);
-        cout << j << "  " << i << "  " << p << "  " << imageinfo[i].area/r_source/r_source
-        /arcsecTOradians/arcsecTOradians/PI << endl;
-        image_pos[j].push_back(p);
+      // find image positions at the resolution of the GridMap
+      //std::vector<GridMap::Triangle> trs;
+      //std::vector<Point_2d> image_points;
+      //gridmap.find_images(ys[j], image_points, trs);
+      
+      // find higher resolution image positions
+      image_pos[j] = lens.find_images(gridmap,ys[j],lens.getSourceZ(),gridmap.getResolution()/3);
+      
+      int i=0;
+      for(RAY &p : image_pos[j]){
+        cout << j << "  " << i << "  " << p << "  " << endl;
+        ++i;
       }
     }
     
+    // Add line-of-sight objects
+    // This might be better done by making them individually and adding them
     lens.GenerateFieldHalos(1.0e11,MassFuncType::ShethTormen
                             ,PI*range*range/2/degreesTOradians/degreesTOradians
                             ,20,LensHaloType::nfw_lens,GalaxyLensHaloType::nsie_gal,2);
     
-    LinkedPoint point;
-    if(fixed_image){
-      int i=0;
-      for(Point_2d p : index_image){
-        point.x[0] = p[0]; point.x[1] = p[1];
-        lens.rayshooterInternal(1,&point);
-        ys[i][0] = point.image->x[0];
-        ys[i++][1] = point.image->x[1];
-      }
-    }
+//    LinkedPoint point;
+//    if(fixed_image){
+//      int i=0;
+//      for(Point_2d p : index_image){
+//        point.x[0] = p[0]; point.x[1] = p[1];
+//        lens.rayshooterInternal(1,&point);
+//        ys[i][0] = point.image->x[0];
+//        ys[i++][1] = point.image->x[1];
+//      }
+//    }
     
-    
-    Grid grid2(&lens,Npix,center.x,range);
+    GridMap gridmap2(&lens,Npix,center.x,range);
+    std::vector<std::vector<RAY> > image_pos2(Nsources);
     for(int j = 0; j < ys.size() ; ++j ){
-      int Nimages;
-      size_t Nimagepoints;
-      std::vector<ImageInfo> imageinfo;
-      ImageFinding::find_images_kist(&lens,ys[j].x, r_source * arcsecTOradians, &grid2 ,&Nimages
-                                     ,imageinfo,&Nimagepoints, 100 * arcsecTOradians,true,1);
       
-      for(auto im : imageinfo) cout << "     " << im.centroid[0] << " " << im.centroid[1] << " - " <<
-        im.area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << endl;
+      // find higher resolution image positions
+      image_pos2[j] = lens.find_images(gridmap2,ys[j],lens.getSourceZ(),gridmap.getResolution()/3);
       
-      bool same_number = Nimages == image_pos[j].size();
+      int i=0;
+      for(RAY &p : image_pos2[j]){
+        cout << j << "  " << i << "  " << p << "  " << endl;
+        ++i;
+      }
       
-      if(Nimages > image_pos[j].size() ){
+ 
+      int Nimages = image_pos2[j].size();
+      bool same_number = (Nimages == image_pos[j].size());
+      
+      if(image_pos2[j].size() > image_pos[j].size() ){
         
         int k = 0;
-        for(Point_2d p : image_pos[j] ){
+        
+        // find the shift in the image positions
+        for(RAY &p : image_pos2[j] ){
           Point_2d delta(1.0e6,1.0e6);
           double length2 = delta.length_sqr();
           int imax = 0;
           for(int i=0; i < Nimages ; ++i){
-            Point_2d p2(imageinfo[i].centroid);
-            if( length2 > (p-p2).length_sqr() ){
-              delta = p - p2;
+            if( length2 > (p.x-image_pos[j][i].x).length_sqr() ){
+              delta = p.x - image_pos[j][i].x;
               length2= delta.length_sqr();
               imax = i;
             }
           }
           cout << j << "  " << k << "  " << p << " " << delta << " "
-          << imageinfo[imax].area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
-          << (imageinfo[imax].aveInvMag() > 0)*2 - 1 << " "
+          << (image_pos[j][imax].invmag() > 0)*2 - 1 << " "  // type of image
           << same_number
           << endl;
           
           file_def << j << " " << k << " " << p << " " << delta << " "
-          << imageinfo[imax].area/r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
-          << (imageinfo[imax].aveInvMag() > 0)*2 - 1 << " "
+          << (image_pos[j][imax].invmag() > 0)*2 - 1 << " "
           << same_number
           << endl;
           ++k;
@@ -428,27 +413,24 @@ int main(int arg,char **argv){
       }else{
         
         for(int i=0; i < Nimages ; ++i){
-          Point_2d p2(imageinfo[i].centroid);
           Point_2d delta(1.0e6,1.0e6);
           double length2 = delta.length_sqr();
           int k = 0, kk = 0;
-          for(Point_2d p : image_pos[j] ){
-            if( length2 > (p-p2).length_sqr() ){
-              delta = p-p2;
+          for(RAY &p : image_pos[j] ){
+            if( length2 > (p.x-image_pos2[j][i].x).length_sqr() ){
+              delta = p.x-image_pos2[j][i].x;
               length2 = delta.length_sqr();
               k = kk;
             }
             ++kk;
           }
           cout << j << " " << i << " " << image_pos[j][k] << " " << delta << " "
-          << imageinfo[i].area /r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
-          << (imageinfo[i].aveInvMag() > 0)*2 - 1 << " "
+          << (image_pos2[j][i].invmag() > 0)*2 - 1 << " "
           << same_number
           << endl;
           
           file_def << j << " " << i << " " << image_pos[j][k] << " " << delta << " "
-          << imageinfo[i].area /r_source/r_source/arcsecTOradians/arcsecTOradians/PI << " "
-          << (imageinfo[i].aveInvMag() > 0)*2 - 1 << " "
+          << (image_pos2[j][i].invmag() > 0)*2 - 1 << " "
           << same_number
           << endl;
         }
