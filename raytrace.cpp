@@ -1,4 +1,4 @@
-/* ParticleExample
+/* ClusterCaustics
  no recenter on particle files
  */
 
@@ -81,7 +81,7 @@ int main(int arg,char **argv){
   //const std::vector<double> zss = {2.0,1.5,1.0,0.9,0.8,0.7,0.6,0.5};         // source redshift
   std::vector<double> zss = {2.0};         // source redshift
    //const std::vector<double> zss = {1.0};         // source redshift
-  const bool no_images_perturb = true;
+  const bool no_images_perturb = false;
   
   const double range = 20*arcminTOradians;
 
@@ -233,28 +233,28 @@ int main(int arg,char **argv){
     // here we shoot the rays in an initial grid
     
     std::cout << "Making grid ..." ;
-    Grid grid(&lens,Npix,center.x,range);
+    GridMap grid(&lens,Npix,center.x,range);
     
     // output maps of the lensing quantities
     if(do_maps){
-      grid.writeFits(1,LensingVariable::KAPPA,"!" + filename_tmp);
+      grid.writeFits<float>(LensingVariable::KAPPA,"!" + filename_tmp);
       //grid.writeFits(1,LensingVariable::ALPHA1,"!" + filename_tmp);
       //grid.writeFits(1,LensingVariable::ALPHA2,"!" + filename_tmp);
-      grid.writeFits(1,LensingVariable::INVMAG,"!" + filename_tmp);
-      grid.writeFits(1,LensingVariable::GAMMA1,"!" + filename_tmp);
-      grid.writeFits(1,LensingVariable::GAMMA2,"!" + filename_tmp);
-      PixelMap magmap = grid.writePixelMap(LensingVariable::INVMAG);
+      grid.writeFits<float>(LensingVariable::INVMAG,"!" + filename_tmp);
+      grid.writeFits<float>(LensingVariable::GAMMA1,"!" + filename_tmp);
+      grid.writeFits<float>(LensingVariable::GAMMA2,"!" + filename_tmp);
+      PixelMap<float> magmap = grid.writePixelMap<float>(LensingVariable::INVMAG);
       
       for(size_t i=0 ; i<magmap.size() ; ++i) magmap[i] = 1/magmap[i];
       magmap.printFITS("!" + filename_tmp + ".mag.fits");
       
-      PixelMap kappamap = grid.writePixelMap(LensingVariable::KAPPA);
-      PixelMap gammamap = grid.writePixelMap(LensingVariable::GAMMA1);
+      PixelMap<float> kappamap = grid.writePixelMap<float>(LensingVariable::KAPPA);
+      PixelMap<float> gammamap = grid.writePixelMap<float>(LensingVariable::GAMMA1);
       
       for(size_t i=0 ; i<kappamap.size() ; ++i) gammamap[i] /= (1+kappamap[i]);
       gammamap.printFITS("!" + filename_tmp + ".g1.fits");
       
-      gammamap = grid.writePixelMap(LensingVariable::GAMMA2);
+      gammamap = grid.writePixelMap<float>(LensingVariable::GAMMA2);
       
       for(size_t i=0 ; i<kappamap.size() ; ++i) gammamap[i] /= (1+kappamap[i]);
       gammamap.printFITS("!" + filename_tmp + ".g2.fits");
@@ -264,9 +264,10 @@ int main(int arg,char **argv){
     // now we will find the critical curves
     int Ncrits;
     std::cout << std::endl << "Finding critical curves ..." ;
-    ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2);
+    ImageFinding::find_crit(lens,grid,critcurves);
+    // ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2);
     
-    std::cout << "found " << Ncrits << " critical curves" << std::endl;
+    std::cout << "found " << critcurves.size() << " critical curves" << std::endl;
     
     // print critical/caustic curve information to a file
     ImageFinding::printCriticalCurves(filename_tmp+"INFO",critcurves);
@@ -323,7 +324,7 @@ int main(int arg,char **argv){
   
   vector<Point_2d> ys;
   Utilities::RandomNumbers_NR ran(seed);
-  crit.RandomSourceWithinCaustic(Nsources, ys, ran);
+  crit.RandomSourcesWithinCaustic(Nsources, ys, ran);
   
   GridMap gridmap(&lens,Npix,center.x,range);
   {
