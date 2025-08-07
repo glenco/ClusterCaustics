@@ -10,7 +10,7 @@
 #include <mutex>
 #include "gridmap.h"
 #include <math.h>
-#include "particle_halo.h"
+#include "particle_halo2.h"
 #include "utilities.h"
 #include "concave_hull.h"
 //#include "gadget.hh"
@@ -19,97 +19,61 @@ using namespace std;
 
 int main(int arg,char **argv){
   
-  /*{  // Test of critical curve ordering
-   std::vector<double> data;
-   int ncol,nrows;
-   std::string filename = "DataFiles/snap_058_centered.txt.cy2049x2049S60Zl0.506000caustic.csv";
-   
-   Utilities::IO::ReadASCII(data, filename, ncol, nrows);
-   
-   std::cout << ncol << " " << nrows << std::endl;
-   
-   std::vector<Point_2d> points(nrows);
-   for(int i = 0 ; i < nrows ; ++i){
-   points[i][0] = data[ ncol*i];
-   points[i][1] = data[ ncol*i + 1];
-   }
-   
-   double scale = 10*sqrt( pow(points[0][0] - points[1][0],2) + pow(points[0][1] - points[1][1],2) );
-   std::vector<Point_2d> hull;
-   Utilities::concave(points,hull,scale);
-   //Utilities::convex_hull(points,hull);
-   //std::vector<Point_2d> hull = Utilities::concave2(points, scale);
-   
-   std::ofstream file("caustic_test.csv");
-   file << "x,y" << std::endl;
-   for(auto p : hull){
-   file << p[0] << "," << p[1] << std::endl;
-   }
-   file.close();
-   exit(0);
-   }*/
-  
-  /*{
-   std::vector<ParticleType<> > data;
-   
-   GadgetFile<ParticleType<float> > gadget_file("DataFiles/snap_069",data);
-   gadget_file.openFile();
-   gadget_file.readBlock("POS");
-   gadget_file.readBlock("MASS");
-   
-   std::cout << data[10][0] << " " << data[10][1] << " " << data[10][2] << std::endl;
-   std::cout << data[10].mass() << " " << data[10].size() << std::endl;
-   exit(0);
-   }*/
-  
-  
   time_t t;
   time(&t);
   
+  const std::string output_dir = "OutputTest3/";
+  Utilities::LOGPARAMS logparams(output_dir + "logfile.txt");
+
   COSMOLOGY cosmo(CosmoParamSet::Planck18);
   
   cosmo.setOmega_matter(0.24,true);
   cosmo.sethubble(0.72);
   
-  const int Npix =  1000;// number of pixels in initial grid of rays
-  const int Nsmooth = 30;// nearest neighbors smoothing scale
-  const bool los_on = false;  // line-of-sight structure
+  const int Npix =  1000;// 1D number of pixels in initial grid of rays
+  logparams("Npix",Npix);
+  const int Nsmooth = 5;// nearest neighbors smoothing scale, 5 is default
+  logparams("Nsmooth",Nsmooth);
+
+  // A spherical region of the simulation can be extracted
+  // radius of extracted region in comoving pc/h, if <=0 the whole simulation box is used
+  const double Rmax = 1.0e5; // 100 kpc/h
+  logparams("Rmax",Rmax);
+  // set position around which you want to extract particles
+  // this must be in the units of the simulation output.  In this case
+  // it is comoving pc/h.
+  Point_3d<float> target(500689.656250 , 498223.187500, 494912.468750);
   
-  const bool cluster_on = true;  // toggle including cluster simulation
+  //const bool cluster_on = true;  // toggle including cluster simulation
   const bool do_maps = true;    // map output maps or no
-  //const std::vector<double> zss = {0.6,0.7,0.8,0.9,1.0,1.5,2.0};         // source redshift
+
+  // multiple source redshifts planes can be set
   //const std::vector<double> zss = {2.0,1.5,1.0,0.9,0.8,0.7,0.6,0.5};         // source redshift
-  std::vector<double> zss = {2.0};         // source redshift
-   //const std::vector<double> zss = {1.0};         // source redshift
-  const bool no_images_perturb = false;
-  
-  const double range = 20*arcminTOradians;
+  std::vector<double> zss = {2.5};         // source redshift
+  logparams("zss",zss);
 
   //long seed = -11920;
   long seed = time(&t);
   
-  //which projection of simulation
+  // which projection of simulation
+  // specifies which axis is the line of sight
+  // 1 = x-axis, 2 = y-axis, 3 = z-axis
   const int projection = 3; // 1,2 or 3
+  logparams("projection",projection);
   
-  //std::string filename = "DataFiles/snap_058_centered.txt";
+  // Path and name of Gadget2 snapshot file 
   const std::string inputfilename = "DataFiles/snap_058";
-  const std::string output_dir = "NewOutputMaps/";
+  logparams("inputfilename",inputfilename);
+
+  // prefix put on output file names
   const std::string fileprefix = "snap_058";
-  
-  {
-    std::ofstream logfile(output_dir + "logfile.txt");
-    
-    logfile << "Nsmooth : " << Nsmooth << endl;
-    logfile << "projection : " << projection << endl;
-    logfile << "zs : ";
-    for(double zs : zss) logfile << zs << " ";
-    logfile << endl;
-    logfile << "los_on : " << los_on << endl;
-    logfile << "cluster_on : " << cluster_on << endl;
-    logfile << "do_maps : " << do_maps << endl;
-    
+  logparams("fileprefix",fileprefix);
+
+  if(!Utilities::IO::check_directory(output_dir)){
+    std::cout << "Creating directory " << output_dir << std::endl;
+    Utilities::IO::make_directories(output_dir);
   }
-  
+
   // make the rotation angle for the projection
   Point_2d theta;
   
@@ -128,23 +92,33 @@ int main(int arg,char **argv){
     }
   }
   
-  // this object is used to interface with the simulation file
-  // , do the smoothing and make LensHalos for each type of
-  // particle
-  
-  MakeParticleLenses halomaker(
-                               inputfilename
-                               ,SimFileFormat::gadget2   // the sim file format
-                               ,Nsmooth
-                               ,false     // takes particle type into account
-                               );
-  
+  // Here a vector of LensHaloParticles is created.  
+  // In this case the Gadget2 snapshot contains 6 types of particles,
+  // so the vector will contain 6 LensHaloParticles objects.  
+  // The smoothing is done according to the density of each type of particle in 3D. 
+  time_t start_time = time(nullptr);
+  std::vector<LensHaloParticles<float> > halos = LensHaloParticles<float>::make(
+      inputfilename,SimFileFormat::gadget2    
+      ,1.0e5   /// masses scale, this times value in file is in solar masses/h
+      ,1.0     /// length scale, this times value in file is in pc/h
+      ,1.0e-13 /// inverse area for mass compensation
+      ,cosmo   /// cosmology
+      ,Nsmooth /// number of neighbours for adaptive smoothing
+      ,8       /// buckets size in tree
+      ,0.1     /// opening angle for tree
+      ,Rmax  /// radius of extracted region in comoving kpc/h, if <=0 no excision is done
+      ,target  /// center of extracted region in comoving kpc/h
+      ,true);
+ 
+  time_t end_time = time(nullptr);
+  std::cout << "times to construct halos: " << difftime(end_time,start_time) << " seconds" << std::endl;
+  logparams("time to construct halos",difftime(end_time,start_time));
+
+  target *= 0;  // simulation is recentered on target
+
   // gets the original redshift that was in the sim file
-  const double zl = halomaker.getZoriginal();
-  
-  //DLSDS func(cosmo,zl);
-  //double zs = Utilities::bisection_search<DLSDS,double>(func
-  //                                                      ,0.5,zl,10 ,0.001);
+  // This could be changed with halos[i].setRedshift();
+  double zl = halos[0].getZlens();
   
   // angular size distance to the lens redshift
   double Dl = cosmo.angDist(zl);
@@ -153,300 +127,104 @@ int main(int arg,char **argv){
   std::cout << "zl = " << zl << std::endl;
   std::cout << "Dls/Ds = " << cosmo.angDist(zl,zss[0])/cosmo.angDist(zss[0]) << std::endl;
   
-  Point_3d<double> Xmax,Xmin;
+  // This finds the 3D bounding box of the simulation particles
+  Point_3d<float> Xmax,Xmin;
+  halos[0].getBoundingBox(Xmin,Xmax);
   // gets the bounding box of the simulation particles
-  halomaker.getBoundingBox(Xmin, Xmax);
+  for(int i=1 ; i < halos.size() ; ++i){
+    Point_3d<float> p1,p2;
+    halos[i].getBoundingBox(p1,p2);
+    if(Xmax[0] < p2[0]) Xmax[0] = p2[0];
+    if(Xmax[1] < p2[1]) Xmax[1] = p2[1];
+    if(Xmax[2] < p2[2]) Xmax[2] = p2[2];
+    
+    if(Xmin[0] > p1[0]) Xmin[0] = p1[0];
+    if(Xmin[1] > p1[1]) Xmin[1] = p1[1];
+    if(Xmin[2] > p1[2]) Xmin[2] = p1[2];
+  }
+
   std::cout << "Xmin = " << Xmin << std::endl;
   std::cout << "Xmax = " << Xmax << std::endl;
-  
-  //Point_3d center3d = (Xmax + Xmin)/2;
+
+  Point_3d<float> center3d = (Xmax + Xmin)/2;
+ 
   // position of the densest particle
-  Point_3d<double> center3d = halomaker.densest_particle();
+  //Point_3d<double> center3d = halomaker.densest_particle();
   
-  // set position around which you want to extract particles
-  // i.e. the center of the lens
-  Point_3d<double> target(500689.656250 , 498223.187500, 494912.468750);
-  target *= 1.0e-3/(1+zl);///cosmo.gethubble();
+    Lens lens(&seed,zss[0],cosmo);
   
-  // recenters simulation to target
-  halomaker.Recenter(target);
-  target *= 0;
-  
-  std::cout << center3d << std::endl;
-  Point_2d center(0,0);
-  std::cout << center << std::endl;
-  
-  // cut out a cylinder
-  //halomaker.cylindricalCut(center,(Xmax[0]-Xmin[0])/2);
-  
-  //cut out a ball centered on target
-  halomaker.radialCut(target,20);
-  
-  //range /= cosmo.gethubble();
-  //double range = (Xmax[0]-Xmin[0])*1.05/cosmo.gethubble()/Dl; // angular range of simulation
-  center *= 1.0/cosmo.gethubble()/Dl; // convert to angular coordinates
-  
-  // 400 arcsecond range
-  //double range = 4*300*arcsecTOradians;
-  
-  std::cout << "area on sky " << range*range/arcsecTOradians/arcsecTOradians
-  << " arcsec^2" << std::endl;
-  
-  Lens lens(&seed,zss[0],cosmo);
-  
-  if(cluster_on){
-    // create the LensHalos, there will be one LensHalo
-    // for each type of particle in this case
-    halomaker.CreateHalos(cosmo,zl,0);
-    
     // transfer the halos to the lens
     
-    for(auto h : halomaker.halos){
-      h->rotate(theta);
-      lens.moveinMainHalo(*h, true);
+    for(auto &h : halos){
+      h.rotate(theta[0],theta[1],target);  // rotate 
+      lens.moveinMainHalo(h, true);  // add the halos to the lens
+      // Warning: this is not a copy of the LensHalo, but a move 
+      // so the LensHalo in the halos vector is now empty.
       // By moving the halos into the lens one avoids
       // copying what might be a large amount of data.
-      // The LensHalo in halomaker is now void.
+      // The LensHalo's in the lens can be accessed with 
+      // lens.getMainHalo(i) or lens.getMainHalos<LensHaloParticles>(i).
     }
-  }
   
-  // this generates random halos along the line-of-sight
-  if(los_on){
-    std::cout << "Generate LOS structures." << std::endl;
-    lens.GenerateFieldHalos(1.0e11,MassFuncType::ShethTormen
-                            ,PI*range*range/2/degreesTOradians/degreesTOradians
-                            ,20,LensHaloType::nfw_lens,GalaxyLensHaloType::nsie_gal,2);
-  }
+  float range = (Xmax[0]-Xmin[0]) / Dl / 15.;
+  //Point_2d angular_center(center3d[0]/Dl+range/2
+  //  ,center3d[1]/Dl+range/2);
   
+  // The center of the simulation is at (0,0) in the angular coordinates.
+  // This can be changed with lens.getMainHalos<LensHaloParticles>(i).setTheta()
+  Point_2d angular_center(0,0);
+
+  std::cout << "angular center = " << angular_center << std::endl;
+  std::cout << "range = " << range/arcminTOradians << " arcmin" << std::endl;
+  logparams ("angular range of GridMap (arcmin)",range/arcminTOradians);
+
   std::string filename_tmp;
   std::vector<ImageFinding::CriticalCurve> critcurves;
   for(double zs : zss){
     
-    filename_tmp = output_dir + fileprefix + ".sph" + to_string(Npix) + "x" + to_string(Npix) +
-    "S" + to_string(Nsmooth) + "Zl"  + to_string(zl) + "Zs"  + to_string(zs) + "prj" + to_string(projection);
-    
-    if(!cluster_on) filename_tmp = filename_tmp + "NoCL";
-    if(los_on) filename_tmp = filename_tmp + "LOS10";
+    filename_tmp = output_dir + fileprefix + "Zs"  + to_string(zs) + "prj" + to_string(projection);
     
     lens.ResetSourcePlane(zs);
     
-    // here we shoot the rays in an initial grid
-    
+    // here we shoot the rays in a grid
+    start_time = time(nullptr);
     std::cout << "Making grid ..." ;
-    GridMap grid(&lens,Npix,center.x,range);
+    GridMap grid(&lens,Npix,angular_center.x,range);
+
+    end_time = time(nullptr);
+    std::cout << "time to make grid " << difftime(end_time,start_time)/60 << " minutes" << std::endl;
+    logparams("time to make grid",difftime(end_time,start_time) );
     
     // output maps of the lensing quantities
     if(do_maps){
-      grid.writeFits<float>(LensingVariable::KAPPA,"!" + filename_tmp);
-      //grid.writeFits(1,LensingVariable::ALPHA1,"!" + filename_tmp);
-      //grid.writeFits(1,LensingVariable::ALPHA2,"!" + filename_tmp);
-      grid.writeFits<float>(LensingVariable::INVMAG,"!" + filename_tmp);
-      grid.writeFits<float>(LensingVariable::GAMMA1,"!" + filename_tmp);
-      grid.writeFits<float>(LensingVariable::GAMMA2,"!" + filename_tmp);
-      PixelMap<float> magmap = grid.writePixelMap<float>(LensingVariable::INVMAG);
-      
-      for(size_t i=0 ; i<magmap.size() ; ++i) magmap[i] = 1/magmap[i];
-      magmap.printFITS("!" + filename_tmp + ".mag.fits");
-      
-      PixelMap<float> kappamap = grid.writePixelMap<float>(LensingVariable::KAPPA);
-      PixelMap<float> gammamap = grid.writePixelMap<float>(LensingVariable::GAMMA1);
-      
-      for(size_t i=0 ; i<kappamap.size() ; ++i) gammamap[i] /= (1+kappamap[i]);
-      gammamap.printFITS("!" + filename_tmp + ".g1.fits");
-      
-      gammamap = grid.writePixelMap<float>(LensingVariable::GAMMA2);
-      
-      for(size_t i=0 ; i<kappamap.size() ; ++i) gammamap[i] /= (1+kappamap[i]);
-      gammamap.printFITS("!" + filename_tmp + ".g2.fits");
-
+      grid.writeFits<float>(LensingVariable::KAPPA,filename_tmp+".kappa.fits");
+      grid.writeFits<float>(LensingVariable::ALPHA1,filename_tmp+".alpha1.fits");
+      grid.writeFits<float>(LensingVariable::ALPHA2,filename_tmp+".alpha2.fits");
+      grid.writeFits<float>(LensingVariable::INVMAG,filename_tmp+".invmag.fits");
+      grid.writeFits<float>(LensingVariable::GAMMA1,filename_tmp+".gamma1.fits");
+      grid.writeFits<float>(LensingVariable::GAMMA2,filename_tmp+".gamma2.fits");
     }
     
     // now we will find the critical curves
     int Ncrits;
     std::cout << std::endl << "Finding critical curves ..." ;
+    start_time = time(nullptr);
     ImageFinding::find_crit(lens,grid,critcurves);
-    // ImageFinding::find_crit(&lens,&grid,critcurves,&Ncrits,range/Npix/2);
+    end_time = time(nullptr);
+    logparams("time to find critical curves",difftime(end_time,start_time) );
     
     std::cout << "found " << critcurves.size() << " critical curves" << std::endl;
     
     // print critical/caustic curve information to a file
     ImageFinding::printCriticalCurves(filename_tmp+"INFO",critcurves);
     
-    // make maps of the critical curves
-    if(critcurves.size() > 0){
-      //PixelMap map = ImageFinding::mapCausticCurves(critcurves,512*2*2);
-      //map.printFITS("!" + filename_tmp + "caust.fits");
-      
-      //map = ImageFinding::mapCriticalCurves(critcurves,512*2*2);
-      //map.printFITS("!" + filename_tmp + "crit.fits");
-      
-      // output points along caustic curve
-      std::ofstream file(filename_tmp + "caustic.csv");
-      double area = 0;
-      int j=0;
-      for(int i = 0 ; i < critcurves.size() ; ++i){
-        if(critcurves[i].critical_area > area){
-          area = critcurves[i].critical_area;
-          for(RAY p : critcurves[i].critcurve){
-            file << j << "," << p << std::endl;
-          }
-          ++j;
-        }
-      }
-      file.close();
-      
-    }
-  }
-
-  if(no_images_perturb) exit(1);
-
-  // ***************************************************
-  //     image perturbations
-  //
-  //   Here I am generating random LOS objects and seeing
-  //   how the image positions change.
-  // ***************************************************
-  
-  const int Nsources = 500;
-  const double r_source = 0.05; // in arcsec
-  const bool fixed_image = true; // fixes one image to the same place when the the LSS is present or not
-  const string deflection_sufix= "fixdef.csv";
-  
-  /// find largest critical curve
-  double area = critcurves[0].critical_area;
-  ImageFinding::CriticalCurve &crit = critcurves[0];
-  for(auto &a : critcurves){
-    if(a.critical_area > area){
-      area = a.critical_area;
-      crit = a;
-    }
-  }
-  
-  vector<Point_2d> ys;
-  Utilities::RandomNumbers_NR ran(seed);
-  crit.RandomSourcesWithinCaustic(Nsources, ys, ran);
-  
-  GridMap gridmap(&lens,Npix,center.x,range);
-  {
-    std::ofstream file_def(filename_tmp + deflection_sufix);
-    file_def << "lens image x_image y_image delta_x delta_y mag mag_sign same_number" << endl;
-    
-    std::vector<std::vector<RAY> > image_pos(Nsources);
-    for(int j = 0; j < ys.size() ; ++j ){
-      
-      // find image positions at the resolution of the GridMap
-      //std::vector<GridMap::Triangle> trs;
-      //std::vector<Point_2d> image_points;
-      //gridmap.find_images(ys[j], image_points, trs);
-      
-      // find higher resolution image positions
-      image_pos[j] = lens.find_images(gridmap,ys[j],lens.getSourceZ(),gridmap.getResolution()/3);
-      
-      int i=0;
-      for(RAY &p : image_pos[j]){
-        cout << j << "  " << i << "  " << p << "  " << endl;
-        ++i;
-      }
-    }
-    
-    // Add line-of-sight objects
-    // This might be better done by making them individually and adding them
-    lens.GenerateFieldHalos(1.0e11,MassFuncType::ShethTormen
-                            ,PI*range*range/2/degreesTOradians/degreesTOradians
-                            ,20,LensHaloType::nfw_lens,GalaxyLensHaloType::nsie_gal,2);
-    
-//    LinkedPoint point;
-//    if(fixed_image){
-//      int i=0;
-//      for(Point_2d p : index_image){
-//        point.x[0] = p[0]; point.x[1] = p[1];
-//        lens.rayshooterInternal(1,&point);
-//        ys[i][0] = point.image->x[0];
-//        ys[i++][1] = point.image->x[1];
-//      }
-//    }
-    
-    GridMap gridmap2(&lens,Npix,center.x,range);
-    std::vector<std::vector<RAY> > image_pos2(Nsources);
-    for(int j = 0; j < ys.size() ; ++j ){
-      
-      // find higher resolution image positions
-      image_pos2[j] = lens.find_images(gridmap2,ys[j],lens.getSourceZ(),gridmap.getResolution()/3);
-      
-      int i=0;
-      for(RAY &p : image_pos2[j]){
-        cout << j << "  " << i << "  " << p << "  " << endl;
-        ++i;
-      }
-      
- 
-      int Nimages = image_pos2[j].size();
-      bool same_number = (Nimages == image_pos[j].size());
-      
-      if(image_pos2[j].size() > image_pos[j].size() ){
-        
-        int k = 0;
-        
-        // find the shift in the image positions
-        for(RAY &p : image_pos2[j] ){
-          Point_2d delta(1.0e6,1.0e6);
-          double length2 = delta.length_sqr();
-          int imax = 0;
-          for(int i=0; i < Nimages ; ++i){
-            if( length2 > (p.x-image_pos[j][i].x).length_sqr() ){
-              delta = p.x - image_pos[j][i].x;
-              length2= delta.length_sqr();
-              imax = i;
-            }
-          }
-          cout << j << "  " << k << "  " << p << " " << delta << " "
-          << (image_pos[j][imax].invmag() > 0)*2 - 1 << " "  // type of image
-          << same_number
-          << endl;
-          
-          file_def << j << " " << k << " " << p << " " << delta << " "
-          << (image_pos[j][imax].invmag() > 0)*2 - 1 << " "
-          << same_number
-          << endl;
-          ++k;
-        }
-        
-      }else{
-        
-        for(int i=0; i < Nimages ; ++i){
-          Point_2d delta(1.0e6,1.0e6);
-          double length2 = delta.length_sqr();
-          int k = 0, kk = 0;
-          for(RAY &p : image_pos[j] ){
-            if( length2 > (p.x-image_pos2[j][i].x).length_sqr() ){
-              delta = p.x-image_pos2[j][i].x;
-              length2 = delta.length_sqr();
-              k = kk;
-            }
-            ++kk;
-          }
-          cout << j << " " << i << " " << image_pos[j][k] << " " << delta << " "
-          << (image_pos2[j][i].invmag() > 0)*2 - 1 << " "
-          << same_number
-          << endl;
-          
-          file_def << j << " " << i << " " << image_pos[j][k] << " " << delta << " "
-          << (image_pos2[j][i].invmag() > 0)*2 - 1 << " "
-          << same_number
-          << endl;
-        }
-        
-      }
-    }
-    
-    file_def.close();
   }
   
   time_t t2 = time(nullptr);
   
   std::cout << "time = " << std::difftime(t2,t)/60 << " min"
   << std::endl;
-  
+  logparams("time (min)",std::difftime(t2,t)/60);
 }
 
 
